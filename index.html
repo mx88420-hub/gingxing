@@ -3,16 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>賢賢身體改造日記</title>
+    <title>早睡早起身體好 - 雲端多用戶照片版</title>
     <style>
         :root {
             --bg-color: #F6F8FA; 
             --card-bg: #FFFFFF;
-            --primary-pink: #FFB7B2; /* 馬卡龍粉 */
-            --primary-blue: #B5E2FA; /* 馬卡龍藍 */
-            --primary-green: #DDF1E7; /* 馬卡龍綠 */
-            --primary-purple: #E1BEE7; /* 馬卡龍紫 */
-            --primary-yellow: #FFDAC1; /* 馬卡龍橘黃 */
+            --primary-pink: #FFB7B2; 
+            --primary-blue: #B5E2FA; 
+            --primary-green: #DDF1E7; 
+            --primary-purple: #E1BEE7; 
+            --primary-yellow: #FFDAC1; 
             --text-color: #5D5D5D;
             --danger-color: #FF9AA2;
         }
@@ -28,10 +28,9 @@
             align-items: flex-start;
             min-height: 100vh;
             box-sizing: border-box;
-            position: relative;
         }
 
-        /* 🔒 登入遮罩畫面 */
+        /* 🔒 登入/註冊 遮罩畫面 */
         #login-overlay {
             position: fixed;
             top: 0;
@@ -47,12 +46,12 @@
 
         .login-box {
             background: var(--card-bg);
-            padding: 40px;
+            padding: 35px;
             border-radius: 24px;
             box-shadow: 0 15px 35px rgba(0,0,0,0.05);
             border: 4px solid var(--primary-purple);
             text-align: center;
-            max-width: 360px;
+            max-width: 380px;
             width: 100%;
             box-sizing: border-box;
         }
@@ -61,7 +60,7 @@
             margin-top: 0;
             color: #6C7A89;
             font-size: 22px;
-            margin-bottom: 25px;
+            margin-bottom: 20px;
         }
 
         .input-group {
@@ -84,22 +83,35 @@
             border-radius: 12px;
             box-sizing: border-box;
             font-size: 16px;
-            color: var(--text-color);
         }
 
-        .login-input:focus {
-            outline: none;
-            border-color: var(--primary-purple);
+        .login-input:focus { outline: none; border-color: var(--primary-purple); }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
         }
 
-        .btn-login {
-            background-color: var(--primary-purple);
-            width: 100%;
+        .btn-action {
+            flex: 1;
             padding: 12px;
-            font-size: 16px;
+            font-size: 15px;
             color: white;
-            margin-top: 10px;
-            box-shadow: 0 5px 15px rgba(225, 190, 231, 0.5);
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .btn-login-submit { background-color: var(--primary-purple); box-shadow: 0 5px 15px rgba(225, 190, 231, 0.5); }
+        .btn-register-submit { background-color: var(--primary-blue); color: #5D5D5D; }
+
+        .switch-mode-text {
+            margin-top: 15px;
+            font-size: 13px;
+            color: #888;
+            cursor: pointer;
+            text-decoration: underline;
         }
 
         #login-error {
@@ -117,10 +129,9 @@
             max-width: 1000px;
             width: 100%;
             flex-wrap: wrap;
-            display: none; /* 登入前先隱藏 */
+            display: none; 
         }
 
-        /* 左側打卡控制區 */
         .left-panel {
             flex: 1;
             min-width: 320px;
@@ -133,7 +144,6 @@
             text-align: center;
         }
 
-        /* 右側行事曆與編輯區 */
         .right-panel {
             flex: 1.4;
             min-width: 360px;
@@ -143,11 +153,6 @@
             padding: 25px;
             box-sizing: border-box;
             border: 4px solid var(--primary-blue);
-        }
-
-        h2 {
-            color: #6C7A89;
-            margin-top: 0;
         }
 
         .tag-title {
@@ -160,7 +165,6 @@
             margin-bottom: 15px;
         }
 
-        /* 時鐘與標語 */
         .clock {
             font-size: 38px;
             font-weight: bold;
@@ -170,7 +174,6 @@
             padding: 10px;
             border-radius: 15px;
             display: inline-block;
-            letter-spacing: 1px;
         }
 
         .slogan-box {
@@ -185,7 +188,19 @@
             line-height: 1.4;
         }
 
-        /* 按鈕 */
+        /* 管理員專用選單 */
+        #admin-user-selector-box {
+            background: #F0F4F8;
+            border: 2px dashed #B0C4DE;
+            padding: 10px;
+            border-radius: 12px;
+            margin-bottom: 15px;
+            display: none;
+            text-align: left;
+        }
+        #admin-user-selector-box label { font-size: 12px; font-weight: bold; color: #4682B4; }
+        select { width: 100%; padding: 8px; margin-top: 5px; border-radius: 8px; border: 1px solid #CCC; }
+
         .btn {
             color: white;
             border: none;
@@ -196,213 +211,132 @@
             font-weight: bold;
             transition: all 0.2s;
         }
-
-        .btn-punch {
-            background-color: var(--primary-pink);
-            width: 100%;
-            padding: 15px;
-            font-size: 18px;
-            box-shadow: 0 5px 15px rgba(255, 183, 178, 0.4);
-            margin-bottom: 10px;
-        }
-
-        .btn-sync {
-            background-color: var(--primary-blue);
-            color: #5D5D5D;
-            font-size: 13px;
-            padding: 5px 15px;
-            border-radius: 10px;
-            margin-bottom: 15px;
-            display: inline-block;
-        }
-
-        .btn-reset {
-            background-color: var(--danger-color);
-            width: 100%;
-            padding: 10px;
-            font-size: 14px;
-            margin-top: 15px;
-            box-shadow: 0 5px 10px rgba(255, 154, 162, 0.3);
-        }
-
+        .btn-punch { background-color: var(--primary-pink); width: 100%; padding: 15px; font-size: 18px; box-shadow: 0 5px 15px rgba(255, 183, 178, 0.4); margin-bottom: 10px; }
+        .btn-sync { background-color: var(--primary-blue); color: #5D5D5D; font-size: 13px; padding: 5px 15px; border-radius: 10px; margin-bottom: 15px; display: inline-block; }
         .btn:hover { transform: translateY(-2px); }
 
-        .result-box {
-            margin-top: 15px;
-            padding: 12px;
-            border-radius: 12px;
-            font-size: 18px;
-            font-weight: bold;
-            display: none;
-        }
-
+        .result-box { margin-top: 15px; padding: 12px; border-radius: 12px; font-size: 18px; font-weight: bold; display: none; }
         .good-baby { background-color: #E8F5E9; color: #2E7D32; border: 2px dashed #A5D6A7; }
         .bad-baby { background-color: #FFEBEE; color: #C62828; border: 2px dashed #EF9A9A; }
 
-        /* 行事曆樣式 */
-        .calendar-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-        }
-
-        .calendar-btn {
-            background: var(--primary-blue);
-            border: none;
-            padding: 5px 12px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: bold;
-            color: #5D5D5D;
-        }
-
-        .calendar-grid {
-            display: grid;
-            grid-template-columns: repeat(7, 1fr);
-            gap: 6px;
-            text-align: center;
-        }
-
-        .weekday {
-            font-weight: bold;
-            color: #A0A0A0;
-            font-size: 13px;
-            padding: 5px 0;
-        }
-
-        .day {
-            background-color: #F9F9F9;
-            aspect-ratio: 1;
-            border-radius: 10px;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            padding: 4px;
-            font-size: 13px;
-            cursor: pointer;
-            position: relative;
-            border: 2px solid transparent;
-            transition: all 0.2s;
-        }
-
+        /* 行事曆 */
+        .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .calendar-btn { background: var(--primary-blue); border: none; padding: 5px 12px; border-radius: 8px; cursor: pointer; font-weight: bold; color: #5D5D5D; }
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; text-align: center; }
+        .weekday { font-weight: bold; color: #A0A0A0; font-size: 13px; padding: 5px 0; }
+        .day { background-color: #F9F9F9; aspect-ratio: 1; border-radius: 10px; display: flex; flex-direction: column; justify-content: space-between; padding: 4px; font-size: 13px; cursor: pointer; border: 2px solid transparent; }
         .day:hover { background-color: #E3F2FD; }
         .day.current-selected { border: 2px solid var(--primary-purple); background-color: #F3E5F5; }
         .day.today { background-color: var(--primary-blue); font-weight: bold; }
         .day-status { font-size: 11px; margin-top: auto; }
 
-        /* 記事編輯區 */
-        .editor-section {
-            margin-top: 20px;
-            background: #FDFDFD;
-            border: 2px dashed #E0E0E0;
-            border-radius: 15px;
-            padding: 15px;
-        }
-
-        .editor-title {
-            font-size: 15px;
-            font-weight: bold;
-            margin-bottom: 10px;
-            color: #7A869A;
-        }
-
-        textarea {
+        /* 📸 照片與日記編輯區 */
+        .editor-section { margin-top: 20px; background: #FDFDFD; border: 2px dashed #E0E0E0; border-radius: 15px; padding: 15px; }
+        .editor-title { font-size: 15px; font-weight: bold; margin-bottom: 10px; color: #7A869A; }
+        
+        /* 拍立得照片預覽框 */
+        .food-photo-container {
             width: 100%;
-            height: 70px;
-            border: 1px solid #DDD;
-            border-radius: 10px;
-            padding: 10px;
-            box-sizing: border-box;
-            resize: none;
-            font-family: inherit;
-            margin-bottom: 10px;
-        }
-
-        textarea:focus { outline: none; border-color: var(--primary-purple); }
-        .save-btn { background-color: var(--primary-purple); padding: 8px 20px; font-size: 14px; float: right; }
-        .clear { clear: both; }
-        
-        .loading-text { font-size: 12px; color: #aaa; margin-top: 5px; }
-        
-        /* 頂部登入者與登出按鈕 */
-        .user-panel-top {
+            max-height: 220px;
+            background-color: #F0F0F0;
+            border-radius: 12px;
+            overflow: hidden;
             display: flex;
-            justify-content: space-between;
+            justify-content: center;
             align-items: center;
-            margin-bottom: 15px;
+            margin-bottom: 12px;
+            border: 2px dashed #CCC;
+            position: relative;
+        }
+        .food-photo-container img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .photo-placeholder-text {
+            color: #999;
             font-size: 13px;
+            text-align: center;
+            padding: 20px;
         }
-        .user-badge {
-            color: #888;
-            font-weight: bold;
-        }
-        .btn-logout {
+        .upload-hidden-input { display: none; }
+        .btn-upload-trigger {
             background-color: #FFF;
-            color: #FF9AA2;
-            border: 1.5px solid #FF9AA2;
-            padding: 4px 10px;
-            font-size: 12px;
+            color: #6C7A89;
+            border: 2px solid #CCC;
+            padding: 6px 15px;
+            font-size: 13px;
             border-radius: 8px;
             cursor: pointer;
+            margin-bottom: 12px;
+            display: inline-block;
             font-weight: bold;
-            transition: all 0.2s;
         }
-        .btn-logout:hover {
-            background-color: #FF9AA2;
-            color: white;
-        }
+        .btn-upload-trigger:hover { background-color: #F5F5F5; }
+
+        textarea { width: 100%; height: 70px; border: 1px solid #DDD; border-radius: 10px; padding: 10px; box-sizing: border-box; resize: none; font-family: inherit; margin-bottom: 10px; }
+        .save-btn { background-color: var(--primary-purple); padding: 8px 20px; font-size: 14px; float: right; }
+        .clear { clear: both; }
+        .loading-text { font-size: 12px; color: #aaa; margin-top: 5px; }
+        
+        .user-panel-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; font-size: 13px; }
+        .user-badge { color: #888; font-weight: bold; }
+        .btn-logout { background-color: #FFF; color: #FF9AA2; border: 1.5px solid #FF9AA2; padding: 4px 10px; font-size: 12px; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        .btn-logout:hover { background-color: #FF9AA2; color: white; }
     </style>
 </head>
 <body>
 
-<!-- 🔒 登入驗證畫面 -->
 <div id="login-overlay">
     <div class="login-box">
-        <div class="tag-title" style="font-size: 14px; margin-bottom: 10px;">Security Check</div>
-        <h3>歡迎來到改造日記</h3>
+        <div class="tag-title" style="font-size: 14px; margin-bottom: 10px;" id="form-tag">🔐 安全登入系統</div>
+        <h3 id="form-title">歡迎來到早睡早起身體好</h3>
+        
         <div class="input-group">
-            <label for="username">使用者帳號</label>
+            <label>使用者帳號 (僅支援英數字)</label>
             <input type="text" id="username" class="login-input" placeholder="請輸入帳號">
         </div>
         <div class="input-group">
-            <label for="password">登入密碼</label>
+            <label>登入密碼</label>
             <input type="password" id="password" class="login-input" placeholder="請輸入密碼">
         </div>
-        <button class="btn btn-login" onclick="checkLogin()">安全登入</button>
-        <div id="login-error">❌ 帳號或密碼錯誤，請再試一次</div>
+        
+        <div id="login-error"></div>
+
+        <div class="btn-group">
+            <button id="btn-main-submit" class="btn-action btn-login-submit" onclick="handleFormSubmit()">登入</button>
+        </div>
+        <div class="switch-mode-text" id="switch-mode-btn" onclick="toggleAuthMode()">還沒有帳號？點此免費註冊</div>
     </div>
 </div>
 
-<!-- 📊 主系統畫面 -->
 <div class="main-layout" id="main-system">
     
-    <!-- 左面板：打卡與即時狀態 -->
     <div class="left-panel">
-        <!-- 🔓 頂部新增登出區塊 -->
         <div class="user-panel-top">
             <div class="user-badge" id="user-display">目前登入：--</div>
             <button class="btn-logout" onclick="performLogout()">🔒 安全登出</button>
         </div>
         
-        <div class="tag-title">賢賢身體改造日記</div>
+        <div id="admin-user-selector-box">
+            <label>👑 管理員專用：請選擇要查看的用戶資料</label>
+            <select id="admin-select-user" onchange="adminSwitchUserView()"></select>
+        </div>
+
+        <div class="tag-title">早睡早起身體好</div>
         <div>
             <button class="btn btn-sync" onclick="pullDataFromCloud()">🔄 點擊刷新同步雲端</button>
-            <div id="sync-status" class="loading-text">正在從雲端載入最新資料...</div>
+            <div id="sync-status" class="loading-text">正在同步雲端...</div>
         </div>
         <div id="live-date" style="font-size: 16px; color: #888;">2026年--月--日</div>
         <div class="clock" id="clock-display">00:00:00</div>
         
-        <div class="slogan-box" id="slogan-display">加載標語中...</div>
+        <div class="slogan-box" id="slogan-display">加油！每天都是全新、更棒的自己！</div>
         
-        <button class="btn btn-punch" onclick="performPunchIn()">✨ 當日健康打卡 ✨</button>
+        <button id="punch-btn-element" class="btn btn-punch" onclick="performPunchIn()">✨ 當日健康打卡 ✨</button>
         <div class="result-box" id="result-display"></div>
-
-        <!-- 重製按鈕 -->
-        <button class="btn btn-reset" onclick="resetDataWithPassword()">⚠️ 重製所有資料 (需密碼)</button>
     </div>
     
-    <!-- 右面板：浪漫馬卡龍行事曆 -->
     <div class="right-panel">
         <div class="calendar-header">
             <button class="calendar-btn" onclick="changeMonth(-1)">◀</button>
@@ -410,107 +344,238 @@
             <button class="calendar-btn" onclick="changeMonth(1)">▶</button>
         </div>
         
-        <div class="calendar-grid" id="calendar-grid">
-            <!-- 由 JS 動態生成 -->
-        </div>
+        <div class="calendar-grid" id="calendar-grid"></div>
 
-        <!-- 記事與當天紀錄編輯區 -->
         <div class="editor-section">
             <div class="editor-title" id="editor-date-title">選擇日期來記錄生活吧！</div>
             <div id="day-punch-history" style="font-size: 13px; color: #666; margin-bottom: 8px; font-weight: bold;"></div>
-            <textarea id="note-input" placeholder="今天有什麼想紀錄的心情或待辦事項嗎..."></textarea>
-            <button class="btn save-btn" onclick="saveDailyNote()">儲存備忘錄</button>
+            
+            <div class="food-photo-container" id="photo-preview-box">
+                <div class="photo-placeholder-text" id="photo-placeholder-text">📸 今天吃了什麼好料？點下方按鈕上傳照片分享吧！</div>
+                <img id="food-img-element" style="display:none;" src="" alt="今日美食">
+            </div>
+            
+            <input type="file" id="photo-file-input" class="upload-hidden-input" accept="image/*" onchange="processAndPreviewImage(this)">
+            <button id="upload-btn-trigger-el" class="btn-upload-trigger" onclick="document.getElementById('photo-file-input').click()">📷 上傳/更換今天吃什麼的照片</button>
+
+            <textarea id="note-input" placeholder="今天有什麼想分享的心情、身材改造紀錄，或是吃了什麼美食的心得嗎..."></textarea>
+            <button id="save-note-btn-el" class="btn save-btn" onclick="saveDailyNote()">儲存今日美食與心情</button>
             <div class="clear"></div>
         </div>
     </div>
-
 </div>
 
 <script>
-    const BIN_ID = '6a3b7243f5f4af5e29272dc4'; 
+    const GLOBAL_REG_BIN = '6a3b7243f5f4af5e29272dc4'; 
     const MASTER_KEY = '$2a$10$hI.UbvJsfQa.7SxfrbZQE./.4pB/55flm6kq88Vuwgt/3IzyMB5ii'; 
+    const ADMIN_ACCOUNT = 'ginggingxing'; 
 
-    const userCredentials = {
-        "ginggingxing": "0979365961",   // 管理者
-        "popoman": "0926682683"         // 打卡者
-    };
-
+    let isRegisterMode = false;
     let currentUser = "";
+    let targetUserBinId = ""; 
+    let currentViewingUser = ""; 
+    
+    let globalUsersDatabase = {}; 
+    let appData = {}; 
     let currentDate = new Date(); 
     let selectedDateStr = ""; 
-    let appData = {}; 
     let syncIntervalId = null;
+    let base64ImageStr = ""; // 用於暫存當前轉換後的照片字串
 
-    // 驗證登入
-    function checkLogin() {
-        const userIn = document.getElementById('username').value.trim().toLowerCase();
-        const passIn = document.getElementById('password').value.trim();
-        const errorMsg = document.getElementById('login-error');
+    function toggleAuthMode() {
+        isRegisterMode = !isRegisterMode;
+        const tag = document.getElementById('form-tag');
+        const title = document.getElementById('form-title');
+        const btn = document.getElementById('btn-main-submit');
+        const switchBtn = document.getElementById('switch-mode-btn');
+        const err = document.getElementById('login-error');
+        err.style.display = 'none';
 
-        if (userCredentials[userIn] && userCredentials[userIn] === passIn) {
-            currentUser = userIn;
-            errorMsg.style.display = 'none';
-            document.getElementById('login-overlay').style.display = 'none'; 
-            document.getElementById('main-system').style.display = 'flex';   
-            
-            const displayName = currentUser === "ginggingxing" ? "GingGingXing" : "PopoMan";
-            document.getElementById('user-display').innerText = `👤 使用者：${displayName}`;
-            
-            // 清空密碼欄位以策安全
-            document.getElementById('password').value = "";
-            
-            initSystem();
+        if(isRegisterMode) {
+            tag.innerText = "📝 新增用戶註冊";
+            title.innerText = "建立全新專屬個人日記箱";
+            btn.innerText = "確認註冊新帳號";
+            btn.className = "btn-action btn-register-submit";
+            switchBtn.innerText = "已有帳號？返回登入畫面";
         } else {
-            errorMsg.style.display = 'block';
+            tag.innerText = "🔐 安全登入系統";
+            title.innerText = "歡迎來到早睡早起身體好";
+            btn.innerText = "登入";
+            btn.className = "btn-action btn-login-submit";
+            switchBtn.innerText = "還沒有帳號？點此免費註冊";
         }
     }
 
-    // 登出機制
-    function performLogout() {
-        currentUser = "";
-        // 停止自動同步計時器
-        if (syncIntervalId) clearInterval(syncIntervalId);
+    function handleFormSubmit() {
+        const userIn = document.getElementById('username').value.trim().toLowerCase();
+        const passIn = document.getElementById('password').value.trim();
+        const errorMsg = document.getElementById('login-error');
+        errorMsg.style.display = 'none';
+
+        if(!userIn || !passIn) {
+            showError("❌ 請填寫帳號及密碼！");
+            return;
+        }
+        if(!/^[a-z0-9]+$/.test(userIn)) {
+            showError("❌ 帳號僅能使用英文小寫與數字喔！");
+            return;
+        }
+
+        document.getElementById('sync-status').innerText = "📡 安全驗證中，請稍候...";
         
-        // 隱藏主系統，顯示登入畫面
+        fetch(`https://api.jsonbin.io/v3/b/${GLOBAL_REG_BIN}/latest`, {
+            method: 'GET', headers: { 'X-Master-Key': MASTER_KEY }
+        })
+        .then(res => res.json())
+        .then(data => {
+            globalUsersDatabase = data.record || {};
+            if(globalUsersDatabase.status === "ok") globalUsersDatabase = {};
+
+            if(isRegisterMode) {
+                if(globalUsersDatabase[userIn]) {
+                    showError("❌ 該帳號已被註冊，請換一個名字！");
+                    return;
+                }
+                
+                fetch(`https://api.jsonbin.io/v3/b`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-Master-Key': MASTER_KEY, 'X-Bin-Private': 'true' },
+                    body: JSON.stringify({ greeting: "Welcome to your private fitness diary!" })
+                })
+                .then(res => res.json())
+                .then(newBinData => {
+                    const allocatedBinId = newBinData.metadata.id;
+                    globalUsersDatabase[userIn] = { password: passIn, binId: allocatedBinId };
+                    
+                    return fetch(`https://api.jsonbin.io/v3/b/${GLOBAL_REG_BIN}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json', 'X-Master-Key': MASTER_KEY },
+                        body: JSON.stringify(globalUsersDatabase)
+                    });
+                })
+                .then(() => {
+                    alert("🎉 註冊成功！系統已為您配置獨立加密儲存盒，請直接登入！");
+                    toggleAuthMode();
+                })
+                .catch(err => { console.error(err); showError("❌ 註冊伺服器通訊失敗。"); });
+
+            } else {
+                if(globalUsersDatabase[userIn] && globalUsersDatabase[userIn].password === passIn) {
+                    currentUser = userIn;
+                    currentViewingUser = userIn;
+                    targetUserBinId = globalUsersDatabase[userIn].binId;
+
+                    document.getElementById('login-overlay').style.display = 'none';
+                    document.getElementById('main-system').style.display = 'flex';
+                    document.getElementById('user-display').innerText = `👤 使用者：${currentUser}`;
+                    document.getElementById('password').value = "";
+
+                    if(currentUser === ADMIN_ACCOUNT) {
+                        setupAdminConsole();
+                    } else {
+                        document.getElementById('admin-user-selector-box').style.display = 'none';
+                        document.getElementById('punch-btn-element').style.display = 'block';
+                    }
+
+                    initSystem();
+                } else {
+                    showError("❌ 帳號或密碼不正確！");
+                }
+            }
+        })
+        .catch(err => { console.error(err); showError("❌ 連線異常，請確認網路！"); });
+    }
+
+    function setupAdminConsole() {
+        const box = document.getElementById('admin-user-selector-box');
+        const selector = document.getElementById('admin-select-user');
+        selector.innerHTML = "";
+        box.style.display = 'block';
+
+        Object.keys(globalUsersDatabase).forEach(user => {
+            const opt = document.createElement('option');
+            opt.value = user;
+            opt.innerText = user === ADMIN_ACCOUNT ? `自己 (${user})` : `一般用戶：${user}`;
+            if(user === currentViewingUser) opt.selected = true;
+            selector.appendChild(opt);
+        });
+    }
+
+    function adminSwitchUserView() {
+        const selectedUser = document.getElementById('admin-select-user').value;
+        currentViewingUser = selectedUser;
+        targetUserBinId = globalUsersDatabase[selectedUser].binId;
+        
+        if(currentViewingUser !== currentUser) {
+            document.getElementById('punch-btn-element').style.display = 'none';
+            document.getElementById('upload-btn-trigger-el').style.display = 'none';
+            document.getElementById('save-note-btn-el').style.display = 'none';
+            document.getElementById('note-input').readOnly = true;
+        } else {
+            document.getElementById('punch-btn-element').style.display = 'block';
+            document.getElementById('upload-btn-trigger-el').style.display = 'inline-block';
+            document.getElementById('save-note-btn-el').style.display = 'block';
+            document.getElementById('note-input').readOnly = false;
+        }
+
+        pullDataFromCloud();
+    }
+
+    function showError(msg) {
+        const errorMsg = document.getElementById('login-error');
+        errorMsg.innerText = msg;
+        errorMsg.style.display = 'block';
+        document.getElementById('sync-status').innerText = "";
+    }
+
+    function performLogout() {
+        currentUser = ""; currentViewingUser = ""; targetUserBinId = "";
+        if (syncIntervalId) clearInterval(syncIntervalId);
         document.getElementById('main-system').style.display = 'none';
         document.getElementById('login-overlay').style.display = 'flex';
-        
-        // 清空輸入框
         document.getElementById('username').value = "";
         document.getElementById('password').value = "";
         document.getElementById('result-display').style.display = 'none';
     }
 
-    document.querySelectorAll('.login-input').forEach(input => {
-        input.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                checkLogin();
-            }
-        });
-    });
-
     function initSystem() {
-        // 防止重複註冊計時器
         if(window.clockIntervalId) clearInterval(window.clockIntervalId);
         updateClock();
         window.clockIntervalId = setInterval(updateClock, 1000);
-        
-        setRandomSlogan();
         selectedDateStr = formatDateKey(new Date());
         
         pullDataFromCloud();
-        
         if (syncIntervalId) clearInterval(syncIntervalId);
         syncIntervalId = setInterval(pullDataFromCloud, 30000);
     }
 
     const slogans = [
+        // 原本的正能量暖心標語
         "❤️ 下午睡覺是為了補充滿滿元氣，晚上也要記得早點躺平喔！",
         "⏰ 超過半夜兩點就不乖囉，身體在抗議了，快快去充電！",
         "🌟 睡飽飽，沒煩惱！把今天的不開心都交給夢境融化吧。",
         "🌙 報告打卡者：作息規律、睡眠充足，就是最厲害的養生法。",
         "🧸 累了就躺下，不管是午覺還是早睡，對身體好都是一級棒！",
-        "🍓 保持好心情的秘訣：按時打卡、好好睡覺、大口吃飯。"
+        "🍓 保持好心情的秘訣：按時打卡、好好睡覺、大口吃飯。",
+        
+        // 趣味負能量標語
+        "🛌 躺平雖然可恥，但真的非常舒服。今天你躺好了嗎？",
+        "🤡 每天都跟自己說要早睡，結果每天都在熬夜看手機，真有你的。",
+        "💸 沒錢就不要生病，生病真的很貴。為了你的荷包，今晚快滾去睡覺。",
+        "🦖 年紀輕輕的，黑眼圈倒是非常復古。你是想轉職當熊貓嗎？",
+        "☕ 咖啡只能幫你吊著一口氣，不能幫你續命，有種你就繼續熬。",
+        "🏃‍♂️ 今天的運動量：在床上翻了個身，並為此喘了三分鐘。",
+        "👻 不要以為熬夜是在賺時間，你只是在提早預支你的陽壽。",
+        "☠️ 熬夜不會讓你變聰明，只會讓你的頭髮掉得比股票還快。",
+        "🧟 看看鏡子裡的自己，那個氣色，不知道的還以為你剛從古墓裡爬出來。",
+        "🚶‍♂️ 比起身材改造，我覺得你的作息更需要進廠大修。",
+
+        // 🥤 升級：台灣早餐店杯蓋冷笑話
+        "🥤 什麼品種的豬最黑？…… 烏龍麵（烏龍meee）。",
+        "🥪 為什麼荷包蛋很寂寞？…… 因為牠是一隻孤（蛋）鳥。",
+        "🥛 培根切片之後會變成什麼？…… 考古學（烤培根）。",
+        "🥯 哪一種飲料最沒禮貌？…… 拿鐵（因為牠都大聲「拿鐵」）。",
+        "☕ 巧克力和草莓去比賽，草莓贏了，巧克力輸了。猜一種早餐？…… 巧克力（輸）薯（叔）。"
     ];
 
     function formatDateKey(date) {
@@ -524,7 +589,6 @@
         const now = new Date();
         const options = { timeZone: 'Asia/Taipei', year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' };
         document.getElementById('live-date').innerText = new Intl.DateTimeFormat('zh-TW', options).format(now);
-
         const timeOptions = { timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
         document.getElementById('clock-display').innerText = new Intl.DateTimeFormat('zh-TW', timeOptions).format(now);
     }
@@ -534,47 +598,73 @@
         document.getElementById('slogan-display').innerText = slogans[randomIndex];
     }
 
+    // 📸 照片壓縮與讀取處理
+    function processAndPreviewImage(input) {
+        if (input.files && input.files[0]) {
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                const img = new Image();
+                img.src = e.target.result;
+                img.onload = function () {
+                    // 為了避免照片檔案太大導致雲端資料庫塞不下，我們在前端進行等比例壓縮
+                    const canvas = document.createElement('canvas');
+                    const max_size = 400; // 最大寬或高
+                    let width = img.width;
+                    let height = img.height;
+
+                    if (width > height) {
+                        if (width > max_size) { height *= max_size / width; width = max_size; }
+                    } else {
+                        if (height > max_size) { width *= max_size / height; height = max_size; }
+                    }
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2document.getElementById');
+                    ctx.drawImage(img, 0, 0, width, height);
+                    
+                    // 將照片轉成輕量化的 Base64 字串
+                    base64ImageStr = canvas.toDataURL('image/jpeg', 0.7); 
+                    
+                    // 呈現預覽
+                    document.getElementById('photo-placeholder-text').style.display = 'none';
+                    const imgEl = document.getElementById('food-img-element');
+                    imgEl.src = base64ImageStr;
+                    imgEl.style.display = 'block';
+                }
+            };
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+
     function pullDataFromCloud() {
-        if (!currentUser) return; // 未登入則不抓取
-        document.getElementById('sync-status').innerText = "⏳ 正在同步雲端最新數據...";
+        if (!targetUserBinId) return;
+        document.getElementById('sync-status').innerText = `⏳ 讀取 [${currentViewingUser}] 的獨立雲端盒...`;
         
-        fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`, {
-            method: 'GET',
-            headers: { 'X-Master-Key': MASTER_KEY }
+        fetch(`https://api.jsonbin.io/v3/b/${targetUserBinId}/latest`, {
+            method: 'GET', headers: { 'X-Master-Key': MASTER_KEY }
         })
         .then(res => res.json())
         .then(data => {
             appData = data.record || {};
-            if (appData.isReseted || appData.status === "ok") {
-                appData = {};
-            }
             renderCalendar();
             selectDay(selectedDateStr);
-            document.getElementById('sync-status').innerText = "✅ 已與雲端即時同步";
+            document.getElementById('sync-status').innerText = `✅ 已即時同步 [${currentViewingUser}] 的紀錄`;
         })
         .catch(err => {
             console.error(err);
-            document.getElementById('sync-status').innerText = "❌ 同步失敗，切換為本地載入";
-            appData = JSON.parse(localStorage.getItem('macaron_clock_data')) || {};
-            if (appData.isReseted || appData.status === "ok") appData = {};
-            renderCalendar();
+            document.getElementById('sync-status').innerText = "❌ 雲端讀取異常";
         });
     }
 
     function pushDataToCloud() {
-        localStorage.setItem('macaron_clock_data', JSON.stringify(appData));
-        
-        fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, {
+        if (!targetUserBinId) return;
+        fetch(`https://api.jsonbin.io/v3/b/${targetUserBinId}`, {
             method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-Master-Key': MASTER_KEY
-            },
+            headers: { 'Content-Type': 'application/json', 'X-Master-Key': MASTER_KEY },
             body: JSON.stringify(appData)
         })
-        .then(res => res.json())
-        .then(data => {
-            document.getElementById('sync-status').innerText = "✅ 資料已成功推送到雲端";
+        .then(() => {
+            document.getElementById('sync-status').innerText = "✅ 變更已安全儲存至個人雲端盒子";
         })
         .catch(err => console.error(err));
     }
@@ -582,27 +672,17 @@
     function performPunchIn() {
         const now = new Date();
         const todayStr = formatDateKey(now);
-        
         const formatter = new Intl.DateTimeFormat('zh-TW', { timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit', hour12: false });
         const [{ value: hour },,{ value: minute }] = formatter.formatToParts(now);
         const currentHour = parseInt(hour, 10);
 
-        let statusSymbol = "";
-        let statusText = "";
-        let statusClass = "";
-
+        let statusSymbol = ""; let statusText = ""; let statusClass = "";
         if (currentHour >= 2 && currentHour < 12) {
-            statusSymbol = "👹 壞寶寶";
-            statusClass = "bad-baby";
-            statusText = `你在 ${hour}:${minute} 打卡。太晚睡或太晚起囉，給個壞！`;
+            statusSymbol = "👹 壞寶寶"; statusClass = "bad-baby";
+            statusText = `你在 ${hour}:${minute} 打卡。稍微晚睡或晚起囉，加油調整作息！`;
         } else {
-            statusSymbol = "🌟 乖寶寶";
-            statusClass = "good-baby";
-            if (currentHour >= 12 && currentHour < 18) {
-                statusText = `內行喔！你在 ${hour}:${minute} 打卡，下午小睡一下身體好！`;
-            } else {
-                statusText = `你在 ${hour}:${minute} 打卡！作息非常優秀，讚！`;
-            }
+            statusSymbol = "🌟 乖寶寶"; statusClass = "good-baby";
+            statusText = `你在 ${hour}:${minute} 打卡！時間維持得很棒，繼續保持！`;
         }
 
         const resultBox = document.getElementById('result-display');
@@ -611,16 +691,12 @@
         resultBox.style.display = 'block';
 
         if (!appData[todayStr]) appData[todayStr] = {};
-        
-        const userTag = currentUser === "ginggingxing" ? "Ging" : "Popo";
-        appData[todayStr].punch = `${statusSymbol} (${hour}:${minute})-[${userTag}]`;
+        appData[todayStr].punch = `${statusSymbol} (${hour}:${minute})`;
         
         pushDataToCloud();
         renderCalendar();
-        if (selectedDateStr === todayStr) {
-            selectDay(todayStr);
-        }
-        setRandomSlogan();
+        if (selectedDateStr === todayStr) selectDay(todayStr);
+        setRandomSlogan(); 
     }
 
     function renderCalendar() {
@@ -628,44 +704,43 @@
         const monthYearTitle = document.getElementById('calendar-month-year');
         grid.innerHTML = ''; 
         
-        const year = currentDate.getFullYear();
-        const month = currentDate.getMonth();
+        const year = currentDate.getFullYear(); const month = currentDate.getMonth();
         monthYearTitle.innerText = `${year}年 ${month + 1}月`;
         
-        const weekdays = ['日', '一', '二', '三', '四', '五', '六'];
-        weekdays.forEach(w => {
-            const div = document.createElement('div');
-            div.className = 'weekday';
-            div.innerText = w;
-            grid.appendChild(div);
+        ['日', '一', '二', '三', '四', '五', '六'].forEach(w => {
+            const div = document.createElement('div'); div.className = 'weekday'; div.innerText = w; grid.appendChild(div);
         });
         
         const firstDayIndex = new Date(year, month, 1).getDay();
         const totalDays = new Date(year, month + 1, 0).getDate();
-        
-        for (let i = 0; i < firstDayIndex; i++) {
-            grid.appendChild(document.createElement('div'));
-        }
+        for (let i = 0; i < firstDayIndex; i++) grid.appendChild(document.createElement('div'));
         
         const todayStr = formatDateKey(new Date());
         for (let d = 1; d <= totalDays; d++) {
             const dayDiv = document.createElement('div');
             dayDiv.className = 'day';
-            const currentLoopDateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+            const loopDateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
             
-            if (currentLoopDateStr === todayStr) dayDiv.classList.add('today');
-            if (currentLoopDateStr === selectedDateStr) dayDiv.classList.add('current-selected');
+            if (loopDateStr === todayStr) dayDiv.classList.add('today');
+            if (loopDateStr === selectedDateStr) dayDiv.classList.add('current-selected');
             
             dayDiv.innerHTML = `<div>${d}</div>`;
             
-            if (appData[currentLoopDateStr] && appData[currentLoopDateStr].punch) {
-                const statusDiv = document.createElement('div');
-                statusDiv.className = 'day-status';
-                statusDiv.innerText = appData[currentLoopDateStr].punch.split(' ')[0]; 
-                dayDiv.appendChild(statusDiv);
+            // 如果當天有打卡或上傳食物照片，就在日曆格子上點綴提示
+            if (appData[loopDateStr]) {
+                let indicators = "";
+                if (appData[loopDateStr].punch) indicators += appData[loopDateStr].punch.split(' ')[0];
+                if (appData[loopDateStr].image) indicators += " 🍳"; // 有照片就多個煎蛋符號
+                
+                if(indicators !== "") {
+                    const statusDiv = document.createElement('div');
+                    statusDiv.className = 'day-status';
+                    statusDiv.innerText = indicators;
+                    dayDiv.appendChild(statusDiv);
+                }
             }
             
-            dayDiv.onclick = () => selectDay(currentLoopDateStr);
+            dayDiv.onclick = () => selectDay(loopDateStr);
             grid.appendChild(dayDiv);
         }
     }
@@ -677,54 +752,50 @@
 
     function selectDay(dateStr) {
         selectedDateStr = dateStr;
-        
         document.querySelectorAll('.day').forEach(node => node.classList.remove('current-selected'));
-        
         const [y, m, d] = dateStr.split('-');
-        document.getElementById('editor-date-title').innerText = `📅 編輯 ${parseInt(m, 10)}月${parseInt(d, 10)}日 的日常紀錄`;
+        document.getElementById('editor-date-title').innerText = `📅 觀看/編輯 ${parseInt(m, 10)}月${parseInt(d, 10)}日 的日常紀錄`;
         
         const historyZone = document.getElementById('day-punch-history');
         if (appData[dateStr] && appData[dateStr].punch) {
-            const displayPunch = appData[dateStr].punch.split('-[')[0];
-            historyZone.innerText = `當日打卡：${displayPunch}`;
+            historyZone.innerText = `當日打卡：${appData[dateStr].punch}`;
             historyZone.style.color = appData[dateStr].punch.includes("乖") ? "#2E7D32" : "#C62828";
         } else {
-            historyZone.innerText = "當日無打卡紀錄";
-            historyZone.style.color = "#666";
+            historyZone.innerText = "當日無打卡紀錄"; historyZone.style.color = "#666";
         }
         
+        // 渲染選定日期的食物照片
+        const imgEl = document.getElementById('food-img-element');
+        const placeholderText = document.getElementById('photo-placeholder-text');
+        
+        if (appData[dateStr] && appData[dateStr].image) {
+            base64ImageStr = appData[dateStr].image;
+            imgEl.src = base64ImageStr;
+            imgEl.style.display = 'block';
+            placeholderText.style.display = 'none';
+        } else {
+            base64ImageStr = "";
+            imgEl.src = "";
+            imgEl.style.display = 'none';
+            placeholderText.style.display = 'block';
+        }
+
         document.getElementById('note-input').value = (appData[dateStr] && appData[dateStr].note) ? appData[dateStr].note : "";
+        document.getElementById('photo-file-input').value = ""; // 清空上傳暫存
     }
 
     function saveDailyNote() {
         const text = document.getElementById('note-input').value.trim();
         if (!appData[selectedDateStr]) appData[selectedDateStr] = {};
+        
         appData[selectedDateStr].note = text;
+        // 同步將 base64 照片字串寫入雲端盒子
+        appData[selectedDateStr].image = base64ImageStr; 
         
         pushDataToCloud();
-        alert("儲存成功囉！🌸");
-    }
-
-    function resetDataWithPassword() {
-        const password = prompt("請輸入重製管理密碼：");
-        if (password === null) return; 
-
-        if (password === "0979365961") {
-            const confirmDouble = confirm("確定要清空所有的打卡與日記紀錄嗎？此動作無法復原喔！");
-            if (confirmDouble) {
-                appData = { isReseted: true, timestamp: Date.now() }; 
-                document.getElementById('result-display').style.display = 'none';
-                pushDataToCloud(); 
-                appData = {};
-                renderCalendar();
-                selectDay(selectedDateStr);
-                alert("💥 歷史資料已全部重製清空！");
-            }
-        } else {
-            alert("❌ 密碼錯誤！無法重製資料。");
-        }
+        renderCalendar(); // 刷新日曆上的煎蛋符號 🍳
+        alert("今日美食與心情日記儲存成功囉！🌸");
     }
 </script>
-
 </body>
 </html>
