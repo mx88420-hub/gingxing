@@ -325,17 +325,38 @@
         
         .loading-text { font-size: 12px; color: #aaa; margin-top: 5px; }
         
-        /* 顯示目前登入者資訊 */
+        /* 頂部登入者與登出按鈕 */
+        .user-panel-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            font-size: 13px;
+        }
         .user-badge {
+            color: #888;
+            font-weight: bold;
+        }
+        .btn-logout {
+            background-color: #FFF;
+            color: #FF9AA2;
+            border: 1.5px solid #FF9AA2;
+            padding: 4px 10px;
             font-size: 12px;
-            color: #999;
-            margin-bottom: 10px;
-            text-align: right;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+        .btn-logout:hover {
+            background-color: #FF9AA2;
+            color: white;
         }
     </style>
 </head>
 <body>
 
+<!-- 🔒 登入驗證畫面 -->
 <div id="login-overlay">
     <div class="login-box">
         <div class="tag-title" style="font-size: 14px; margin-bottom: 10px;">Security Check</div>
@@ -353,10 +374,17 @@
     </div>
 </div>
 
+<!-- 📊 主系統畫面 -->
 <div class="main-layout" id="main-system">
     
+    <!-- 左面板：打卡與即時狀態 -->
     <div class="left-panel">
-        <div class="user-badge" id="user-display">目前登入：--</div>
+        <!-- 🔓 頂部新增登出區塊 -->
+        <div class="user-panel-top">
+            <div class="user-badge" id="user-display">目前登入：--</div>
+            <button class="btn-logout" onclick="performLogout()">🔒 安全登出</button>
+        </div>
+        
         <div class="tag-title">賢賢身體改造日記</div>
         <div>
             <button class="btn btn-sync" onclick="pullDataFromCloud()">🔄 點擊刷新同步雲端</button>
@@ -370,9 +398,11 @@
         <button class="btn btn-punch" onclick="performPunchIn()">✨ 當日健康打卡 ✨</button>
         <div class="result-box" id="result-display"></div>
 
+        <!-- 重製按鈕 -->
         <button class="btn btn-reset" onclick="resetDataWithPassword()">⚠️ 重製所有資料 (需密碼)</button>
     </div>
     
+    <!-- 右面板：浪漫馬卡龍行事曆 -->
     <div class="right-panel">
         <div class="calendar-header">
             <button class="calendar-btn" onclick="changeMonth(-1)">◀</button>
@@ -381,8 +411,10 @@
         </div>
         
         <div class="calendar-grid" id="calendar-grid">
-            </div>
+            <!-- 由 JS 動態生成 -->
+        </div>
 
+        <!-- 記事與當天紀錄編輯區 -->
         <div class="editor-section">
             <div class="editor-title" id="editor-date-title">選擇日期來記錄生活吧！</div>
             <div id="day-punch-history" style="font-size: 13px; color: #666; margin-bottom: 8px; font-weight: bold;"></div>
@@ -395,11 +427,9 @@
 </div>
 
 <script>
-    // 🌸 雲端金鑰
     const BIN_ID = '6a3b7243f5f4af5e29272dc4'; 
     const MASTER_KEY = '$2a$10$hI.UbvJsfQa.7SxfrbZQE./.4pB/55flm6kq88Vuwgt/3IzyMB5ii'; 
 
-    // 🔑 更新後的帳號密碼對照表（已設定大小寫不拘邏輯）
     const userCredentials = {
         "ginggingxing": "0979365961",   // 管理者
         "popoman": "0926682683"         // 打卡者
@@ -409,10 +439,10 @@
     let currentDate = new Date(); 
     let selectedDateStr = ""; 
     let appData = {}; 
+    let syncIntervalId = null;
 
-    // 驗證登入 (不限大小寫)
+    // 驗證登入
     function checkLogin() {
-        // 使用 .toLowerCase() 將輸入的帳號自動轉為小寫比對
         const userIn = document.getElementById('username').value.trim().toLowerCase();
         const passIn = document.getElementById('password').value.trim();
         const errorMsg = document.getElementById('login-error');
@@ -423,9 +453,11 @@
             document.getElementById('login-overlay').style.display = 'none'; 
             document.getElementById('main-system').style.display = 'flex';   
             
-            // 顯示時把首字母或專屬名稱漂亮呈現
-            const displayName = currentUser === "ginggingxing" ? "GingGingXing (管理者)" : "PopoMan (打卡者)";
-            document.getElementById('user-display').innerText = `👤 目前使用者：${displayName}`;
+            const displayName = currentUser === "ginggingxing" ? "GingGingXing" : "PopoMan";
+            document.getElementById('user-display').innerText = `👤 使用者：${displayName}`;
+            
+            // 清空密碼欄位以策安全
+            document.getElementById('password').value = "";
             
             initSystem();
         } else {
@@ -433,7 +465,22 @@
         }
     }
 
-    // 按下 Enter 鍵直接登入
+    // 登出機制
+    function performLogout() {
+        currentUser = "";
+        // 停止自動同步計時器
+        if (syncIntervalId) clearInterval(syncIntervalId);
+        
+        // 隱藏主系統，顯示登入畫面
+        document.getElementById('main-system').style.display = 'none';
+        document.getElementById('login-overlay').style.display = 'flex';
+        
+        // 清空輸入框
+        document.getElementById('username').value = "";
+        document.getElementById('password').value = "";
+        document.getElementById('result-display').style.display = 'none';
+    }
+
     document.querySelectorAll('.login-input').forEach(input => {
         input.addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
@@ -443,13 +490,18 @@
     });
 
     function initSystem() {
+        // 防止重複註冊計時器
+        if(window.clockIntervalId) clearInterval(window.clockIntervalId);
         updateClock();
-        setInterval(updateClock, 1000);
-        setRandomSlogan();
+        window.clockIntervalId = setInterval(updateClock, 1000);
         
+        setRandomSlogan();
         selectedDateStr = formatDateKey(new Date());
+        
         pullDataFromCloud();
-        setInterval(pullDataFromCloud, 30000);
+        
+        if (syncIntervalId) clearInterval(syncIntervalId);
+        syncIntervalId = setInterval(pullDataFromCloud, 30000);
     }
 
     const slogans = [
@@ -483,6 +535,7 @@
     }
 
     function pullDataFromCloud() {
+        if (!currentUser) return; // 未登入則不抓取
         document.getElementById('sync-status').innerText = "⏳ 正在同步雲端最新數據...";
         
         fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`, {
@@ -559,7 +612,6 @@
 
         if (!appData[todayStr]) appData[todayStr] = {};
         
-        // 記錄打卡時標記是哪一個帳號打的卡
         const userTag = currentUser === "ginggingxing" ? "Ging" : "Popo";
         appData[todayStr].punch = `${statusSymbol} (${hour}:${minute})-[${userTag}]`;
         
@@ -655,10 +707,8 @@
 
     function resetDataWithPassword() {
         const password = prompt("請輸入重製管理密碼：");
-        
         if (password === null) return; 
 
-        // 這裡設定當輸入管理者的密碼時允許重製資料
         if (password === "0979365961") {
             const confirmDouble = confirm("確定要清空所有的打卡與日記紀錄嗎？此動作無法復原喔！");
             if (confirmDouble) {
@@ -668,7 +718,7 @@
                 appData = {};
                 renderCalendar();
                 selectDay(selectedDateStr);
-                alert("💥 歷史資料已全部重製清空！兩端畫面重新整理後皆會維持清除狀態。");
+                alert("💥 歷史資料已全部重製清空！");
             }
         } else {
             alert("❌ 密碼錯誤！無法重製資料。");
