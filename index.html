@@ -420,35 +420,41 @@
             return;
         }
 
-        // 🌟 核心防卡死點：如果是內建帳號登入，直接放行，完全不卡網路請求！
+        // ✨ 徹底隔離！如果是固定帳號，完全不碰外部 API，100%直接進系統
         if(!isRegisterMode && HARDCODED_USERS[userIn]) {
             if(HARDCODED_USERS[userIn].pass === passIn) {
                 currentUser = userIn;
                 currentViewingUser = userIn;
                 targetUserBinId = HARDCODED_USERS[userIn].binId;
                 
+                // 1. 先把主畫面的框架開起來，遮罩關掉
                 document.getElementById('login-overlay').style.display = 'none';
                 document.getElementById('main-system').style.display = 'flex';
                 
                 if(HARDCODED_USERS[userIn].isAdmin) {
                     document.getElementById('user-display').innerText = `👑 管理員：${currentUser}`;
-                    setupAdminConsole(); // 先用現有資料建好管理員選單
+                    setupAdminConsole(); 
                 } else {
                     document.getElementById('user-display').innerText = `👤 使用者：${currentUser}`;
                     document.getElementById('admin-user-selector-box').style.display = 'none';
                 }
                 
+                document.getElementById('username').value = "";
                 document.getElementById('password').value = "";
-                initSystem();
 
-                // 在背景慢慢加載其餘註冊的名單，不擋住登入動作
-                fetch(`https://api.jsonbin.io/v3/b/${GLOBAL_REG_BIN}/latest`, {
-                    method: 'GET', headers: { 'X-Master-Key': MASTER_KEY }
-                }).then(r => r.json()).then(d => { 
-                    globalUsersDatabase = d.record || {};
-                    if(globalUsersDatabase.status === "ok") globalUsersDatabase = {};
-                    if(HARDCODED_USERS[currentUser] && HARDCODED_USERS[currentUser].isAdmin) setupAdminConsole();
-                }).catch(e => console.log("背景載入著名單稍有延遲"));
+                // 2. 緩衝 100 毫秒，等 DOM 完全顯示排版完畢後，再發動系統初始化讀取資料，防止卡住
+                setTimeout(() => {
+                    initSystem();
+                    
+                    // 3. 在完全進入系統後，才在最底層背景抓取線上多用戶名單
+                    fetch(`https://api.jsonbin.io/v3/b/${GLOBAL_REG_BIN}/latest`, {
+                        method: 'GET', headers: { 'X-Master-Key': MASTER_KEY }
+                    }).then(r => r.json()).then(d => { 
+                        globalUsersDatabase = d.record || {};
+                        if(globalUsersDatabase.status === "ok") globalUsersDatabase = {};
+                        if(HARDCODED_USERS[currentUser] && HARDCODED_USERS[currentUser].isAdmin) setupAdminConsole();
+                    }).catch(e => console.log("背景註冊名單異步加載略有延遲"));
+                }, 100);
 
                 return;
             } else {
@@ -464,7 +470,7 @@
 
         document.getElementById('sync-status').innerText = "📡 安全驗證中，請稍候...";
         
-        // 2. 對接雲端多用戶註冊盒
+        // 2. 多用戶新註冊者登入對接流程
         fetch(`https://api.jsonbin.io/v3/b/${GLOBAL_REG_BIN}/latest`, {
             method: 'GET', headers: { 'X-Master-Key': MASTER_KEY }
         })
@@ -502,7 +508,6 @@
                 .catch(err => { console.error(err); showError("❌ 註冊伺服器通訊失敗。"); });
 
             } else {
-                // 線上註冊用戶登入
                 if(globalUsersDatabase[userIn] && globalUsersDatabase[userIn].password === passIn) {
                     currentUser = userIn;
                     currentViewingUser = userIn;
@@ -512,9 +517,12 @@
                     document.getElementById('main-system').style.display = 'flex';
                     document.getElementById('user-display').innerText = `👤 使用者：${currentUser}`;
                     document.getElementById('admin-user-selector-box').style.display = 'none';
+                    document.getElementById('username').value = "";
                     document.getElementById('password').value = "";
 
-                    initSystem();
+                    setTimeout(() => {
+                        initSystem();
+                    }, 100);
                 } else {
                     showError("❌ 帳號或密碼不正確！");
                 }
@@ -528,7 +536,7 @@
     function setupAdminConsole() {
         const box = document.getElementById('admin-user-selector-box');
         const selector = document.getElementById('admin-select-user');
-        if(!selector) return;
+        if(!selector || !box) return;
         
         selector.innerHTML = "";
         box.style.display = 'block';
@@ -580,9 +588,12 @@
 
     function showError(msg) {
         const errorMsg = document.getElementById('login-error');
-        errorMsg.innerText = msg;
-        errorMsg.style.display = 'block';
-        document.getElementById('sync-status').innerText = "";
+        if(errorMsg) {
+            errorMsg.innerText = msg;
+            errorMsg.style.display = 'block';
+        }
+        const syncStatus = document.getElementById('sync-status');
+        if(syncStatus) syncStatus.innerText = "";
     }
 
     function performLogout() {
@@ -615,7 +626,7 @@
         "🍓 保持好心情的秘訣：按時打卡、好好睡覺、大口吃飯。",
         "🛌 躺平雖然可恥，但真的非常舒服。今天你躺好了嗎？",
         "🤡 每天都跟自己說要早睡，結果每天都在熬夜看手機，真有你的。",
-        "💸 沒錢就不要生病，生病真的很貴。為了你的荷包，今晚快滾去睡覺。",
+        "💸 沒錢就不要生病，生病真的很貴。為了你的荷包，今晚快滾去睡規律覺。",
         "🦖 年紀輕輕的，黑眼圈倒是非常復古。你是想轉職當熊貓嗎？",
         "☕ 咖啡只能幫你吊著一口氣，不能幫你續命，有種你就繼續熬。",
         "🏃‍♂️ 今天的運動量：在床上翻了個身，並為此喘了三分鐘。",
@@ -640,14 +651,18 @@
     function updateClock() {
         const now = new Date();
         const options = { timeZone: 'Asia/Taipei', year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' };
-        document.getElementById('live-date').innerText = new Intl.DateTimeFormat('zh-TW', options).format(now);
+        const liveDateEl = document.getElementById('live-date');
+        if(liveDateEl) liveDateEl.innerText = new Intl.DateTimeFormat('zh-TW', options).format(now);
+        
         const timeOptions = { timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
-        document.getElementById('clock-display').innerText = new Intl.DateTimeFormat('zh-TW', timeOptions).format(now);
+        const clockDisplayEl = document.getElementById('clock-display');
+        if(clockDisplayEl) clockDisplayEl.innerText = new Intl.DateTimeFormat('zh-TW', timeOptions).format(now);
     }
 
     function setRandomSlogan() {
         const randomIndex = Math.floor(Math.random() * slogans.length);
-        document.getElementById('slogan-display').innerText = slogans[randomIndex];
+        const sloganEl = document.getElementById('slogan-display');
+        if(sloganEl) sloganEl.innerText = slogans[randomIndex];
     }
 
     function processAndPreviewImage(input) {
@@ -686,7 +701,8 @@
 
     function pullDataFromCloud() {
         if (!targetUserBinId) return;
-        document.getElementById('sync-status').innerText = `⏳ 讀取 [${currentViewingUser}] 的獨立雲端盒...`;
+        const syncStatusEl = document.getElementById('sync-status');
+        if(syncStatusEl) syncStatusEl.innerText = `⏳ 讀取 [${currentViewingUser}] 的獨立雲端盒...`;
         
         fetch(`https://api.jsonbin.io/v3/b/${targetUserBinId}/latest`, {
             method: 'GET', headers: { 'X-Master-Key': MASTER_KEY }
@@ -696,11 +712,11 @@
             appData = data.record || {};
             renderCalendar();
             selectDay(selectedDateStr);
-            document.getElementById('sync-status').innerText = `✅ 已即時同步 [${currentViewingUser}] 的紀錄`;
+            if(syncStatusEl) syncStatusEl.innerText = `✅ 已即時同步 [${currentViewingUser}] 的紀錄`;
         })
         .catch(err => {
             console.error(err);
-            document.getElementById('sync-status').innerText = "❌ 雲端讀取異常";
+            if(syncStatusEl) syncStatusEl.innerText = "❌ 雲端讀取異常";
         });
     }
 
@@ -712,7 +728,8 @@
             body: JSON.stringify(appData)
         })
         .then(() => {
-            document.getElementById('sync-status').innerText = "✅ 變更已安全儲存至個人雲端盒子";
+            const syncStatusEl = document.getElementById('sync-status');
+            if(syncStatusEl) syncStatusEl.innerText = "✅ 變更已安全儲存至個人雲端盒子";
         })
         .catch(err => console.error(err));
     }
@@ -734,9 +751,11 @@
         }
 
         const resultBox = document.getElementById('result-display');
-        resultBox.className = `result-box ${statusClass}`;
-        resultBox.innerHTML = `<div>${statusSymbol}</div><div style="font-size:13px; font-weight:normal; margin-top:4px;">${statusText}</div>`;
-        resultBox.style.display = 'block';
+        if(resultBox) {
+            resultBox.className = `result-box ${statusClass}`;
+            resultBox.innerHTML = `<div>${statusSymbol}</div><div style="font-size:13px; font-weight:normal; margin-top:4px;">${statusText}</div>`;
+            resultBox.style.display = 'block';
+        }
 
         if (!appData[todayStr]) appData[todayStr] = {};
         appData[todayStr].punch = `${statusSymbol} (${hour}:${minute})`;
@@ -750,7 +769,7 @@
     function renderCalendar() {
         const grid = document.getElementById('calendar-grid');
         const monthYearTitle = document.getElementById('calendar-month-year');
-        if(!grid) return;
+        if(!grid || !monthYearTitle) return;
         grid.innerHTML = ''; 
         
         const year = currentDate.getFullYear(); const month = currentDate.getMonth();
