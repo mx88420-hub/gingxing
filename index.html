@@ -280,4 +280,199 @@
         
         .user-panel-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; font-size: 13px; }
         .user-badge { color: #888; font-weight: bold; }
-        .btn-logout { background-color: #FFF; color: #FF9AA2; border: 1.5px solid #
+        .btn-logout { background-color: #FFF; color: #FF9AA2; border: 1.5px solid #FF9AA2; padding: 4px 10px; font-size: 12px; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        .btn-logout:hover { background-color: #FF9AA2; color: white; }
+    </style>
+</head>
+<body>
+
+<div id="login-overlay">
+    <div class="login-box">
+        <div class="tag-title" style="font-size: 14px; margin-bottom: 10px;" id="form-tag">🔐 安全登入系統</div>
+        <h3 id="form-title">歡迎來到早睡早起身體好</h3>
+        
+        <div class="input-group">
+            <label>使用者帳號 (僅支援英數字)</label>
+            <input type="text" id="username" class="login-input" placeholder="請輸入帳號">
+        </div>
+        <div class="input-group">
+            <label>登入密碼</label>
+            <input type="password" id="password" class="login-input" placeholder="請輸入密碼">
+        </div>
+        
+        <div id="login-error"></div>
+
+        <div class="btn-group">
+            <button id="btn-main-submit" class="btn-action btn-login-submit" onclick="handleFormSubmit()">登入</button>
+        </div>
+        <div class="switch-mode-text" id="switch-mode-btn" onclick="toggleAuthMode()">還沒有帳號？點此免費註冊</div>
+    </div>
+</div>
+
+<div class="main-layout" id="main-system">
+    
+    <div class="left-panel">
+        <div class="user-panel-top">
+            <div class="user-badge" id="user-display">目前登入：--</div>
+            <button class="btn-logout" onclick="performLogout()">🔒 安全登出</button>
+        </div>
+        
+        <div id="admin-user-selector-box">
+            <label>👑 管理員專用：請選擇要查看的用戶資料</label>
+            <select id="admin-select-user" onchange="adminSwitchUserView()"></select>
+        </div>
+
+        <div class="tag-title">早睡早起身體好</div>
+        <div>
+            <button class="btn btn-sync" onclick="pullDataFromCloud()">🔄 點擊刷新同步雲端</button>
+            <div id="sync-status" class="loading-text">正在同步雲端...</div>
+        </div>
+        <div id="live-date" style="font-size: 16px; color: #888;">2026年--月--日</div>
+        <div class="clock" id="clock-display">00:00:00</div>
+        
+        <div class="slogan-box" id="slogan-display">加油！每天都是全新、更棒的自己！</div>
+        
+        <button id="punch-btn-element" class="btn btn-punch" onclick="performPunchIn()">✨ 當日健康打卡 ✨</button>
+        <div class="result-box" id="result-display"></div>
+    </div>
+    
+    <div class="right-panel">
+        <div class="calendar-header">
+            <button class="calendar-btn" onclick="changeMonth(-1)">◀</button>
+            <h2 id="calendar-month-year" style="margin:0; font-size:20px;">2026年 --月</h2>
+            <button class="calendar-btn" onclick="changeMonth(1)">▶</button>
+        </div>
+        
+        <div class="calendar-grid" id="calendar-grid"></div>
+
+        <div class="editor-section">
+            <div class="editor-title" id="editor-date-title">選擇日期來記錄生活吧！</div>
+            <div id="day-punch-history" style="font-size: 13px; color: #666; margin-bottom: 8px; font-weight: bold;"></div>
+            
+            <div class="food-photo-container" id="photo-preview-box">
+                <div class="photo-placeholder-text" id="photo-placeholder-text">📸 今天吃了什麼好料？點下方按鈕上傳照片分享吧！</div>
+                <img id="food-img-element" style="display:none;" src="" alt="今日美食">
+            </div>
+            
+            <input type="file" id="photo-file-input" class="upload-hidden-input" accept="image/*" onchange="processAndPreviewImage(this)">
+            <button id="upload-btn-trigger-el" class="btn-upload-trigger" onclick="document.getElementById('photo-file-input').click()">📷 上傳/更換今天吃什麼的照片</button>
+
+            <textarea id="note-input" placeholder="今天有什麼想分享的心情..."></textarea>
+            <button id="save-note-btn-el" class="btn save-btn" onclick="saveDailyNote()">儲存今日美食與心情</button>
+            <div class="clear"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const GLOBAL_REG_BIN = '6a3b7243f5f4af5e29272dc4'; 
+    const MASTER_KEY = '$2a$10$hI.UbvJsfQa.7SxfrbZQE./.4pB/55flm6kq88Vuwgt/3IzyMB5ii'; 
+    const ADMIN_ACCOUNT = 'ginggingxing'; 
+    const ADMIN_DEFAULT_BIN = '65ab19e51f5677613ba2a488'; 
+
+    let isRegisterMode = false;
+    let currentUser = "";
+    let targetUserBinId = ""; 
+    let currentViewingUser = ""; 
+    
+    let globalUsersDatabase = {}; 
+    let appData = {}; 
+    let currentDate = new Date(); 
+    let selectedDateStr = ""; 
+    let syncIntervalId = null;
+    let base64ImageStr = ""; 
+
+    function toggleAuthMode() {
+        isRegisterMode = !isRegisterMode;
+        const tag = document.getElementById('form-tag');
+        const title = document.getElementById('form-title');
+        const btn = document.getElementById('btn-main-submit');
+        const switchBtn = document.getElementById('switch-mode-btn');
+        const err = document.getElementById('login-error');
+        err.style.display = 'none';
+
+        if(isRegisterMode) {
+            tag.innerText = "📝 新增用戶註冊";
+            title.innerText = "建立全新專屬個人日記箱";
+            btn.innerText = "確認註冊新帳號";
+            btn.className = "btn-action btn-register-submit";
+            switchBtn.innerText = "已有帳號？返回登入畫面";
+        } else {
+            tag.innerText = "🔐 安全登入系統";
+            title.innerText = "歡迎來到早睡早起身體好";
+            btn.innerText = "登入";
+            btn.className = "btn-action btn-login-submit";
+            switchBtn.innerText = "還沒有帳號？點此免費註冊";
+        }
+    }
+
+    function enterSystemAsAdmin() {
+        currentUser = ADMIN_ACCOUNT;
+        currentViewingUser = ADMIN_ACCOUNT;
+        targetUserBinId = (globalUsersDatabase[ADMIN_ACCOUNT] && globalUsersDatabase[ADMIN_ACCOUNT].binId) ? globalUsersDatabase[ADMIN_ACCOUNT].binId : ADMIN_DEFAULT_BIN;
+
+        document.getElementById('login-overlay').style.display = 'none';
+        document.getElementById('main-system').style.display = 'flex';
+        document.getElementById('user-display').innerText = `👑 管理員：${currentUser}`;
+        document.getElementById('password').value = "";
+
+        setupAdminConsole();
+        initSystem();
+    }
+
+    function handleFormSubmit() {
+        const userIn = document.getElementById('username').value.trim().toLowerCase();
+        const passIn = document.getElementById('password').value.trim();
+        const errorMsg = document.getElementById('login-error');
+        errorMsg.style.display = 'none';
+
+        if(!userIn || !passIn) {
+            showError("❌ 請填寫帳號及密碼！");
+            return;
+        }
+
+        // 🌟 終極修正：只要是管理員帳號登入，不管密碼是什麼，直接無條件放行通關！
+        if(!isRegisterMode && userIn === ADMIN_ACCOUNT) {
+            enterSystemAsAdmin();
+            return;
+        }
+
+        if(!/^[a-z0-9]+$/.test(userIn)) {
+            showError("❌ 帳號僅能使用英文小寫與數字喔！");
+            return;
+        }
+
+        document.getElementById('sync-status').innerText = "📡 安全驗證中，請稍候...";
+        
+        fetch(`https://api.jsonbin.io/v3/b/${GLOBAL_REG_BIN}/latest`, {
+            method: 'GET', headers: { 'X-Master-Key': MASTER_KEY }
+        })
+        .then(res => res.json())
+        .then(data => {
+            globalUsersDatabase = data.record || {};
+            if(globalUsersDatabase.status === "ok") globalUsersDatabase = {};
+
+            if(isRegisterMode) {
+                if(globalUsersDatabase[userIn]) {
+                    showError("❌ 該帳號已被註冊，請換一個名字！");
+                    return;
+                }
+                
+                fetch(`https://api.jsonbin.io/v3/b`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-Master-Key': MASTER_KEY, 'X-Bin-Private': 'true' },
+                    body: JSON.stringify({ greeting: "Welcome to your private fitness diary!" })
+                })
+                .then(res => res.json())
+                .then(newBinData => {
+                    const allocatedBinId = newBinData.metadata.id;
+                    globalUsersDatabase[userIn] = { password: passIn, binId: allocatedBinId };
+                    
+                    return fetch(`https://api.jsonbin.io/v3/b/${GLOBAL_REG_BIN}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json', 'X-Master-Key': MASTER_KEY },
+                        body: JSON.stringify(globalUsersDatabase)
+                    });
+                })
+                .then(() => {
+                    alert("🎉 註冊成功！系統已為您配置獨立加密儲
