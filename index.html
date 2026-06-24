@@ -367,7 +367,7 @@
 <script>
     const GLOBAL_REG_BIN = '6a3b7243f5f4af5e29272dc4'; 
     const MASTER_KEY = '$2a$10$hI.UbvJsfQa.7SxfrbZQE./.4pB/55flm6kq88Vuwgt/3IzyMB5ii'; 
-    const ORIGINAL_BIN = '65ab19e51f5677613ba2a488'; // 歷史紀錄資料庫盒 ID
+    const ORIGINAL_BIN = '65ab19e51f5677613ba2a488'; 
 
     // 🔒 內建固定免註冊兩組帳號設定
     const HARDCODED_USERS = {
@@ -420,7 +420,7 @@
             return;
         }
 
-        // 1. 優先檢查是否為內建帳號登入
+        // 🌟 核心防卡死點：如果是內建帳號登入，直接放行，完全不卡網路請求！
         if(!isRegisterMode && HARDCODED_USERS[userIn]) {
             if(HARDCODED_USERS[userIn].pass === passIn) {
                 currentUser = userIn;
@@ -430,17 +430,9 @@
                 document.getElementById('login-overlay').style.display = 'none';
                 document.getElementById('main-system').style.display = 'flex';
                 
-                // 讀取線上其他註冊用戶名單，供管理下拉選單使用
-                fetch(`https://api.jsonbin.io/v3/b/${GLOBAL_REG_BIN}/latest`, {
-                    method: 'GET', headers: { 'X-Master-Key': MASTER_KEY }
-                }).then(r => r.json()).then(d => { 
-                    globalUsersDatabase = d.record || {};
-                    if(globalUsersDatabase.status === "ok") globalUsersDatabase = {};
-                    if(HARDCODED_USERS[currentUser].isAdmin) setupAdminConsole();
-                }).catch(e => console.log("加載線上用戶名單失敗"));
-
                 if(HARDCODED_USERS[userIn].isAdmin) {
                     document.getElementById('user-display').innerText = `👑 管理員：${currentUser}`;
+                    setupAdminConsole(); // 先用現有資料建好管理員選單
                 } else {
                     document.getElementById('user-display').innerText = `👤 使用者：${currentUser}`;
                     document.getElementById('admin-user-selector-box').style.display = 'none';
@@ -448,6 +440,16 @@
                 
                 document.getElementById('password').value = "";
                 initSystem();
+
+                // 在背景慢慢加載其餘註冊的名單，不擋住登入動作
+                fetch(`https://api.jsonbin.io/v3/b/${GLOBAL_REG_BIN}/latest`, {
+                    method: 'GET', headers: { 'X-Master-Key': MASTER_KEY }
+                }).then(r => r.json()).then(d => { 
+                    globalUsersDatabase = d.record || {};
+                    if(globalUsersDatabase.status === "ok") globalUsersDatabase = {};
+                    if(HARDCODED_USERS[currentUser] && HARDCODED_USERS[currentUser].isAdmin) setupAdminConsole();
+                }).catch(e => console.log("背景載入著名單稍有延遲"));
+
                 return;
             } else {
                 showError("❌ 密碼不正確！");
@@ -472,17 +474,15 @@
             if(globalUsersDatabase.status === "ok") globalUsersDatabase = {};
 
             if(isRegisterMode) {
-                // 檢查是否已被內建帳號或註冊帳號佔用
                 if(globalUsersDatabase[userIn] || HARDCODED_USERS[userIn]) {
                     showError("❌ 該帳號已被佔用，請換一個名字！");
                     return;
                 }
                 
-                // 為新註冊用戶建立全新獨立雲端盒
                 fetch(`https://api.jsonbin.io/v3/b`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-Master-Key': MASTER_KEY, 'X-Bin-Private': 'true' },
-                    body: JSON.stringify({ greeting: "Welcome to your private fitness diary!" })
+                    body: JSON.stringify({ greeting: "Welcome to your private diary!" })
                 })
                 .then(res => res.json())
                 .then(newBinData => {
@@ -496,7 +496,7 @@
                     });
                 })
                 .then(() => {
-                    alert("🎉 註冊成功！系統已為您配置獨立加密儲存盒，請直接登入！");
+                    alert("🎉 註冊成功！請直接登入！");
                     toggleAuthMode();
                 })
                 .catch(err => { console.error(err); showError("❌ 註冊伺服器通訊失敗。"); });
@@ -528,6 +528,8 @@
     function setupAdminConsole() {
         const box = document.getElementById('admin-user-selector-box');
         const selector = document.getElementById('admin-select-user');
+        if(!selector) return;
+        
         selector.innerHTML = "";
         box.style.display = 'block';
 
@@ -748,6 +750,7 @@
     function renderCalendar() {
         const grid = document.getElementById('calendar-grid');
         const monthYearTitle = document.getElementById('calendar-month-year');
+        if(!grid) return;
         grid.innerHTML = ''; 
         
         const year = currentDate.getFullYear(); const month = currentDate.getMonth();
@@ -799,33 +802,40 @@
         selectedDateStr = dateStr;
         document.querySelectorAll('.day').forEach(node => node.classList.remove('current-selected'));
         const [y, m, d] = dateStr.split('-');
-        document.getElementById('editor-date-title').innerText = `📅 觀看/編輯 ${parseInt(m, 10)}月${parseInt(d, 10)}日 的日常紀錄`;
+        const titleEl = document.getElementById('editor-date-title');
+        if(titleEl) titleEl.innerText = `📅 觀看/編輯 ${parseInt(m, 10)}月${parseInt(d, 10)}日 的日常紀錄`;
         
         const historyZone = document.getElementById('day-punch-history');
-        if (appData[dateStr] && appData[dateStr].punch) {
-            historyZone.innerText = `當日打卡：${appData[dateStr].punch}`;
-            historyZone.style.color = appData[dateStr].punch.includes("乖") ? "#2E7D32" : "#C62828";
-        } else {
-            historyZone.innerText = "當日無打卡紀錄"; historyZone.style.color = "#666";
+        if(historyZone) {
+            if (appData[dateStr] && appData[dateStr].punch) {
+                historyZone.innerText = `當日打卡：${appData[dateStr].punch}`;
+                historyZone.style.color = appData[dateStr].punch.includes("乖") ? "#2E7D32" : "#C62828";
+            } else {
+                historyZone.innerText = "當日無打卡紀錄"; historyZone.style.color = "#666";
+            }
         }
         
         const imgEl = document.getElementById('food-img-element');
         const placeholderText = document.getElementById('photo-placeholder-text');
         
-        if (appData[dateStr] && appData[dateStr].image) {
-            base64ImageStr = appData[dateStr].image;
-            imgEl.src = base64ImageStr;
-            imgEl.style.display = 'block';
-            placeholderText.style.display = 'none';
-        } else {
-            base64ImageStr = "";
-            imgEl.src = "";
-            imgEl.style.display = 'none';
-            placeholderText.style.display = 'block';
+        if(imgEl && placeholderText) {
+            if (appData[dateStr] && appData[dateStr].image) {
+                base64ImageStr = appData[dateStr].image;
+                imgEl.src = base64ImageStr;
+                imgEl.style.display = 'block';
+                placeholderText.style.display = 'none';
+            } else {
+                base64ImageStr = "";
+                imgEl.src = "";
+                imgEl.style.display = 'none';
+                placeholderText.style.display = 'block';
+            }
         }
 
-        document.getElementById('note-input').value = (appData[dateStr] && appData[dateStr].note) ? appData[dateStr].note : "";
-        document.getElementById('photo-file-input').value = ""; 
+        const noteIn = document.getElementById('note-input');
+        if(noteIn) noteIn.value = (appData[dateStr] && appData[dateStr].note) ? appData[dateStr].note : "";
+        const fileIn = document.getElementById('photo-file-input');
+        if(fileIn) fileIn.value = ""; 
     }
 
     function saveDailyNote() {
