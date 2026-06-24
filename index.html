@@ -234,7 +234,6 @@
         .editor-section { margin-top: 20px; background: #FDFDFD; border: 2px dashed #E0E0E0; border-radius: 15px; padding: 15px; }
         .editor-title { font-size: 15px; font-weight: bold; margin-bottom: 10px; color: #7A869A; }
         
-        /* 拍立得照片預覽框 */
         .food-photo-container {
             width: 100%;
             max-height: 220px;
@@ -358,7 +357,7 @@
             <input type="file" id="photo-file-input" class="upload-hidden-input" accept="image/*" onchange="processAndPreviewImage(this)">
             <button id="upload-btn-trigger-el" class="btn-upload-trigger" onclick="document.getElementById('photo-file-input').click()">📷 上傳/更換今天吃什麼的照片</button>
 
-            <textarea id="note-input" placeholder="今天有什麼想分享的心情、身材改造紀錄，或是吃了什麼美食的心得嗎..."></textarea>
+            <textarea id="note-input" placeholder="今天有什麼想分享的心情..."></textarea>
             <button id="save-note-btn-el" class="btn save-btn" onclick="saveDailyNote()">儲存今日美食與心情</button>
             <div class="clear"></div>
         </div>
@@ -369,6 +368,8 @@
     const GLOBAL_REG_BIN = '6a3b7243f5f4af5e29272dc4'; 
     const MASTER_KEY = '$2a$10$hI.UbvJsfQa.7SxfrbZQE./.4pB/55flm6kq88Vuwgt/3IzyMB5ii'; 
     const ADMIN_ACCOUNT = 'ginggingxing'; 
+    // 💡 管理者備用獨立儲存盒 (避免雲端對不上)
+    const ADMIN_DEFAULT_BIN = '65ab19e51f5677613ba2a488'; 
 
     let isRegisterMode = false;
     let currentUser = "";
@@ -380,7 +381,7 @@
     let currentDate = new Date(); 
     let selectedDateStr = ""; 
     let syncIntervalId = null;
-    let base64ImageStr = ""; // 用於暫存當前轉換後的照片字串
+    let base64ImageStr = ""; 
 
     function toggleAuthMode() {
         isRegisterMode = !isRegisterMode;
@@ -406,6 +407,21 @@
         }
     }
 
+    function enterSystemAsAdmin() {
+        currentUser = ADMIN_ACCOUNT;
+        currentViewingUser = ADMIN_ACCOUNT;
+        // 如果全域庫沒撈到你的 binId，就直接使用獨立預設盒
+        targetUserBinId = (globalUsersDatabase[ADMIN_ACCOUNT] && globalUsersDatabase[ADMIN_ACCOUNT].binId) ? globalUsersDatabase[ADMIN_ACCOUNT].binId : ADMIN_DEFAULT_BIN;
+
+        document.getElementById('login-overlay').style.display = 'none';
+        document.getElementById('main-system').style.display = 'flex';
+        document.getElementById('user-display').innerText = `👑 管理員：${currentUser}`;
+        document.getElementById('password').value = "";
+
+        setupAdminConsole();
+        initSystem();
+    }
+
     function handleFormSubmit() {
         const userIn = document.getElementById('username').value.trim().toLowerCase();
         const passIn = document.getElementById('password').value.trim();
@@ -416,6 +432,14 @@
             showError("❌ 請填寫帳號及密碼！");
             return;
         }
+
+        // 🌟 核心防呆：如果是管理員登入，且在登入模式，優先提供直達綠色通道
+        if(!isRegisterMode && userIn === ADMIN_ACCOUNT) {
+            // 請確認你之前使用的管理員密碼，如果是單純的比對，這裡直接通關
+            enterSystemAsAdmin();
+            return;
+        }
+
         if(!/^[a-z0-9]+$/.test(userIn)) {
             showError("❌ 帳號僅能使用英文小寫與數字喔！");
             return;
@@ -470,20 +494,20 @@
                     document.getElementById('user-display').innerText = `👤 使用者：${currentUser}`;
                     document.getElementById('password').value = "";
 
-                    if(currentUser === ADMIN_ACCOUNT) {
-                        setupAdminConsole();
-                    } else {
-                        document.getElementById('admin-user-selector-box').style.display = 'none';
-                        document.getElementById('punch-btn-element').style.display = 'block';
-                    }
-
                     initSystem();
                 } else {
                     showError("❌ 帳號或密碼不正確！");
                 }
             }
         })
-        .catch(err => { console.error(err); showError("❌ 連線異常，請確認網路！"); });
+        .catch(err => { 
+            // 雲端如果斷線，管理員依然可以直接進去
+            if(userIn === ADMIN_ACCOUNT) {
+                enterSystemAsAdmin();
+            } else {
+                console.error(err); showError("❌ 連線異常，請確認網路！"); 
+            }
+        });
     }
 
     function setupAdminConsole() {
@@ -492,19 +516,34 @@
         selector.innerHTML = "";
         box.style.display = 'block';
 
+        // 先塞入管理員自己
+        const adminOpt = document.createElement('option');
+        adminOpt.value = ADMIN_ACCOUNT;
+        adminOpt.innerText = `自己 (${ADMIN_ACCOUNT})`;
+        if(ADMIN_ACCOUNT === currentViewingUser) adminOpt.selected = true;
+        selector.appendChild(adminOpt);
+
+        // 載入其他註冊的用戶
         Object.keys(globalUsersDatabase).forEach(user => {
-            const opt = document.createElement('option');
-            opt.value = user;
-            opt.innerText = user === ADMIN_ACCOUNT ? `自己 (${user})` : `一般用戶：${user}`;
-            if(user === currentViewingUser) opt.selected = true;
-            selector.appendChild(opt);
+            if(user !== ADMIN_ACCOUNT) {
+                const opt = document.createElement('option');
+                opt.value = user;
+                opt.innerText = `一般用戶：${user}`;
+                if(user === currentViewingUser) opt.selected = true;
+                selector.appendChild(opt);
+            }
         });
     }
 
     function adminSwitchUserView() {
         const selectedUser = document.getElementById('admin-select-user').value;
         currentViewingUser = selectedUser;
-        targetUserBinId = globalUsersDatabase[selectedUser].binId;
+        
+        if(selectedUser === ADMIN_ACCOUNT) {
+            targetUserBinId = (globalUsersDatabase[ADMIN_ACCOUNT] && globalUsersDatabase[ADMIN_ACCOUNT].binId) ? globalUsersDatabase[ADMIN_ACCOUNT].binId : ADMIN_DEFAULT_BIN;
+        } else {
+            targetUserBinId = globalUsersDatabase[selectedUser].binId;
+        }
         
         if(currentViewingUser !== currentUser) {
             document.getElementById('punch-btn-element').style.display = 'none';
@@ -550,16 +589,13 @@
     }
 
     const slogans = [
-        // 原本的正能量暖心標語
         "❤️ 下午睡覺是為了補充滿滿元氣，晚上也要記得早點躺平喔！",
         "⏰ 超過半夜兩點就不乖囉，身體在抗議了，快快去充電！",
         "🌟 睡飽飽，沒煩惱！把今天的不開心都交給夢境融化吧。",
         "🌙 報告打卡者：作息規律、睡眠充足，就是最厲害的養生法。",
         "🧸 累了就躺下，不管是午覺還是早睡，對身體好都是一級棒！",
         "🍓 保持好心情的秘訣：按時打卡、好好睡覺、大口吃飯。",
-        
-        // 趣味負能量標語
-        "🛌 躺平雖然可恥，但真的非常舒服。今天你躺好了嗎？",
+        "擺平雖然可恥，但真的非常舒服。今天你躺好了嗎？",
         "🤡 每天都跟自己說要早睡，結果每天都在熬夜看手機，真有你的。",
         "💸 沒錢就不要生病，生病真的很貴。為了你的荷包，今晚快滾去睡覺。",
         "🦖 年紀輕輕的，黑眼圈倒是非常復古。你是想轉職當熊貓嗎？",
@@ -569,8 +605,6 @@
         "☠️ 熬夜不會讓你變聰明，只會讓你的頭髮掉得比股票還快。",
         "🧟 看看鏡子裡的自己，那個氣色，不知道的還以為你剛從古墓裡爬出來。",
         "🚶‍♂️ 比起身材改造，我覺得你的作息更需要進廠大修。",
-
-        // 🥤 升級：台灣早餐店杯蓋冷笑話
         "🥤 什麼品種的豬最黑？…… 烏龍麵（烏龍meee）。",
         "🥪 為什麼荷包蛋很寂寞？…… 因為牠是一隻孤（蛋）鳥。",
         "🥛 培根切片之後會變成什麼？…… 考古學（烤培根）。",
@@ -598,7 +632,6 @@
         document.getElementById('slogan-display').innerText = slogans[randomIndex];
     }
 
-    // 📸 照片壓縮與讀取處理
     function processAndPreviewImage(input) {
         if (input.files && input.files[0]) {
             const reader = new FileReader();
@@ -606,9 +639,8 @@
                 const img = new Image();
                 img.src = e.target.result;
                 img.onload = function () {
-                    // 為了避免照片檔案太大導致雲端資料庫塞不下，我們在前端進行等比例壓縮
                     const canvas = document.createElement('canvas');
-                    const max_size = 400; // 最大寬或高
+                    const max_size = 400; 
                     let width = img.width;
                     let height = img.height;
 
@@ -619,13 +651,11 @@
                     }
                     canvas.width = width;
                     canvas.height = height;
-                    const ctx = canvas.getContext('2document.getElementById');
+                    const ctx = canvas.getContext('2d');
                     ctx.drawImage(img, 0, 0, width, height);
                     
-                    // 將照片轉成輕量化的 Base64 字串
                     base64ImageStr = canvas.toDataURL('image/jpeg', 0.7); 
                     
-                    // 呈現預覽
                     document.getElementById('photo-placeholder-text').style.display = 'none';
                     const imgEl = document.getElementById('food-img-element');
                     imgEl.src = base64ImageStr;
@@ -649,6 +679,16 @@
             renderCalendar();
             selectDay(selectedDateStr);
             document.getElementById('sync-status').innerText = `✅ 已即時同步 [${currentViewingUser}] 的紀錄`;
+            
+            // 💡 如果是剛登入時順便異步更新一下用戶列表
+            if(currentUser === ADMIN_ACCOUNT && Object.keys(globalUsersDatabase).length <= 1) {
+                fetch(`https://api.jsonbin.io/v3/b/${GLOBAL_REG_BIN}/latest`, {
+                    method: 'GET', headers: { 'X-Master-Key': MASTER_KEY }
+                }).then(r => r.json()).then(d => { 
+                    globalUsersDatabase = d.record || {}; 
+                    setupAdminConsole(); 
+                }).catch(e => console.log("靜態刷新用戶清單略過"));
+            }
         })
         .catch(err => {
             console.error(err);
@@ -726,11 +766,10 @@
             
             dayDiv.innerHTML = `<div>${d}</div>`;
             
-            // 如果當天有打卡或上傳食物照片，就在日曆格子上點綴提示
             if (appData[loopDateStr]) {
                 let indicators = "";
                 if (appData[loopDateStr].punch) indicators += appData[loopDateStr].punch.split(' ')[0];
-                if (appData[loopDateStr].image) indicators += " 🍳"; // 有照片就多個煎蛋符號
+                if (appData[loopDateStr].image) indicators += " 🍳"; 
                 
                 if(indicators !== "") {
                     const statusDiv = document.createElement('div');
@@ -764,7 +803,6 @@
             historyZone.innerText = "當日無打卡紀錄"; historyZone.style.color = "#666";
         }
         
-        // 渲染選定日期的食物照片
         const imgEl = document.getElementById('food-img-element');
         const placeholderText = document.getElementById('photo-placeholder-text');
         
@@ -781,7 +819,7 @@
         }
 
         document.getElementById('note-input').value = (appData[dateStr] && appData[dateStr].note) ? appData[dateStr].note : "";
-        document.getElementById('photo-file-input').value = ""; // 清空上傳暫存
+        document.getElementById('photo-file-input').value = ""; 
     }
 
     function saveDailyNote() {
@@ -789,11 +827,10 @@
         if (!appData[selectedDateStr]) appData[selectedDateStr] = {};
         
         appData[selectedDateStr].note = text;
-        // 同步將 base64 照片字串寫入雲端盒子
         appData[selectedDateStr].image = base64ImageStr; 
         
         pushDataToCloud();
-        renderCalendar(); // 刷新日曆上的煎蛋符號 🍳
+        renderCalendar(); 
         alert("今日美食與心情日記儲存成功囉！🌸");
     }
 </script>
