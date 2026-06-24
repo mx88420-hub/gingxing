@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>賢賢身體改造日記</title>
+    <style>
+        :root {
+            --bg-color: #F6F8FA; 
+            --card-bg: #FFFFFF;
+            --primary-pink: #FFB7B2; /* 馬卡龍粉 */
+            --primary-blue: #B5E2FA; /* 馬卡龍藍 */
+            --primary-green: #DDF1E7; /* 馬卡龍綠 */
+            --primary-purple: #E1BEE7; /* 馬卡龍紫 */
+            --primary-yellow: #FFDAC1; /* 馬卡龍橘黃 */
+            --text-color: #5D5D5D;
+            --danger-color: #FF9AA2;
+        }
+
+        body {
+            font-family: 'Helvetica Neue', Arial, 'Noto Sans TC', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            box-sizing: border-box;
+            position: relative;
+        }
+
+        /* 🔒 登入遮罩畫面 */
+        #login-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(246, 248, 250, 0.95);
+            z-index: 9999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .login-box {
+            background: var(--card-bg);
+            padding: 40px;
+            border-radius: 24px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.05);
+            border: 4px solid var(--primary-purple);
+            text-align: center;
+            max-width: 360px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .login-box h3 {
+            margin-top: 0;
+            color: #6C7A89;
+            font-size: 22px;
+            margin-bottom: 25px;
+        }
+
+        .input-group {
+            margin-bottom: 15px;
+            text-align: left;
+        }
+
+        .input-group label {
+            display: block;
+            font-size: 14px;
+            color: #888;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        .login-input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #E0E0E0;
+            border-radius: 12px;
+            box-sizing: border-box;
+            font-size: 16px;
+            color: var(--text-color);
+        }
+
+        .login-input:focus {
+            outline: none;
+            border-color: var(--primary-purple);
+        }
+
+        .btn-login {
+            background-color: var(--primary-purple);
+            width: 100%;
+            padding: 12px;
+            font-size: 16px;
+            color: white;
+            margin-top: 10px;
+            box-shadow: 0 5px 15px rgba(225, 190, 231, 0.5);
+        }
+
+        #login-error {
+            color: var(--danger-color);
+            font-size: 14px;
+            margin-top: 10px;
+            font-weight: bold;
+            display: none;
+        }
+
+        /* 主畫面布局 */
+        .main-layout {
+            display: flex;
+            gap: 25px;
+            max-width: 1000px;
+            width: 100%;
+            flex-wrap: wrap;
+            display: none; /* 登入前先隱藏 */
+        }
+
+        /* 左側打卡控制區 */
+        .left-panel {
+            flex: 1;
+            min-width: 320px;
+            background: var(--card-bg);
+            border-radius: 24px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.03);
+            padding: 25px;
+            box-sizing: border-box;
+            border: 4px solid var(--primary-pink);
+            text-align: center;
+        }
+
+        /* 右側行事曆與編輯區 */
+        .right-panel {
+            flex: 1.4;
+            min-width: 360px;
+            background: var(--card-bg);
+            border-radius: 24px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.03);
+            padding: 25px;
+            box-sizing: border-box;
+            border: 4px solid var(--primary-blue);
+        }
+
+        h2 {
+            color: #6C7A89;
+            margin-top: 0;
+        }
+
+        .tag-title {
+            background-color: var(--primary-purple);
+            display: inline-block;
+            padding: 6px 18px;
+            border-radius: 20px;
+            color: white;
+            font-size: 18px;
+            margin-bottom: 15px;
+        }
+
+        /* 時鐘與標語 */
+        .clock {
+            font-size: 38px;
+            font-weight: bold;
+            color: #4A4A4A;
+            margin: 10px 0;
+            background: var(--primary-green);
+            padding: 10px;
+            border-radius: 15px;
+            display: inline-block;
+            letter-spacing: 1px;
+        }
+
+        .slogan-box {
+            background-color: #FFF4E5;
+            border-left: 5px solid var(--primary-yellow);
+            padding: 12px;
+            border-radius: 8px;
+            margin: 15px 0;
+            font-size: 14px;
+            color: #8A6D3B;
+            text-align: left;
+            line-height: 1.4;
+        }
+
+        /* 按鈕 */
+        .btn {
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            font-size: 16px;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+
+        .btn-punch {
+            background-color: var(--primary-pink);
+            width: 100%;
+            padding: 15px;
+            font-size: 18px;
+            box-shadow: 0 5px 15px rgba(255, 183, 178, 0.4);
+            margin-bottom: 10px;
+        }
+
+        .btn-sync {
+            background-color: var(--primary-blue);
+            color: #5D5D5D;
+            font-size: 13px;
+            padding: 5px 15px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            display: inline-block;
+        }
+
+        .btn-reset {
+            background-color: var(--danger-color);
+            width: 100%;
+            padding: 10px;
+            font-size: 14px;
+            margin-top: 15px;
+            box-shadow: 0 5px 10px rgba(255, 154, 162, 0.3);
+        }
+
+        .btn:hover { transform: translateY(-2px); }
+
+        .result-box {
+            margin-top: 15px;
+            padding: 12px;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: bold;
+            display: none;
+        }
+
+        .good-baby { background-color: #E8F5E9; color: #2E7D32; border: 2px dashed #A5D6A7; }
+        .bad-baby { background-color: #FFEBEE; color: #C62828; border: 2px dashed #EF9A9A; }
+
+        /* 行事曆樣式 */
+        .calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .calendar-btn {
+            background: var(--primary-blue);
+            border: none;
+            padding: 5px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            color: #5D5D5D;
+        }
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 6px;
+            text-align: center;
+        }
+
+        .weekday {
+            font-weight: bold;
+            color: #A0A0A0;
+            font-size: 13px;
+            padding: 5px 0;
+        }
+
+        .day {
+            background-color: #F9F9F9;
+            aspect-ratio: 1;
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 4px;
+            font-size: 13px;
+            cursor: pointer;
+            position: relative;
+            border: 2px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .day:hover { background-color: #E3F2FD; }
+        .day.current-selected { border: 2px solid var(--primary-purple); background-color: #F3E5F5; }
+        .day.today { background-color: var(--primary-blue); font-weight: bold; }
+        .day-status { font-size: 11px; margin-top: auto; }
+
+        /* 記事編輯區 */
+        .editor-section {
+            margin-top: 20px;
+            background: #FDFDFD;
+            border: 2px dashed #E0E0E0;
+            border-radius: 15px;
+            padding: 15px;
+        }
+
+        .editor-title {
+            font-size: 15px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #7A869A;
+        }
+
+        textarea {
+            width: 100%;
+            height: 70px;
+            border: 1px solid #DDD;
+            border-radius: 10px;
+            padding: 10px;
+            box-sizing: border-box;
+            resize: none;
+            font-family: inherit;
+            margin-bottom: 10px;
+        }
+
+        textarea:focus { outline: none; border-color: var(--primary-purple); }
+        .save-btn { background-color: var(--primary-purple); padding: 8px 20px; font-size: 14px; float: right; }
+        .clear { clear: both; }
+        
+        .loading-text { font-size: 12px; color: #aaa; margin-top: 5px; }
+        
+        /* 顯示目前登入者資訊 */
+        .user-badge {
+            font-size: 12px;
+            color: #999;
+            margin-bottom: 10px;
+            text-align: right;
+        }
+    </style>
+</head>
+<body>
+
+<div id="login-overlay">
+    <div class="login-box">
+        <div class="tag-title" style="font-size: 14px; margin-bottom: 10px;">Security Check</div>
+        <h3>歡迎來到改造日記</h3>
+        <div class="input-group">
+            <label for="username">使用者帳號</label>
+            <input type="text" id="username" class="login-input" placeholder="請輸入帳號">
+        </div>
+        <div class="input-group">
+            <label for="password">登入密碼</label>
+            <input type="password" id="password" class="login-input" placeholder="請輸入密碼">
+        </div>
+        <button class="btn btn-login" onclick="checkLogin()">安全登入</button>
+        <div id="login-error">❌ 帳號或密碼錯誤，請再試一次</div>
+    </div>
+</div>
+
+<div class="main-layout" id="main-system">
+    
+    <div class="left-panel">
+        <div class="user-badge" id="user-display">目前登入：--</div>
+        <div class="tag-title">賢賢身體改造日記</div>
+        <div>
+            <button class="btn btn-sync" onclick="pullDataFromCloud()">🔄 點擊刷新同步雲端</button>
+            <div id="sync-status" class="loading-text">正在從雲端載入最新資料...</div>
+        </div>
+        <div id="live-date" style="font-size: 16px; color: #888;">2026年--月--日</div>
+        <div class="clock" id="clock-display">00:00:00</div>
+        
+        <div class="slogan-box" id="slogan-display">加載標語中...</div>
+        
+        <button class="btn btn-punch" onclick="performPunchIn()">✨ 當日健康打卡 ✨</button>
+        <div class="result-box" id="result-display"></div>
+
+        <button class="btn btn-reset" onclick="resetDataWithPassword()">⚠️ 重製所有資料 (需密碼)</button>
+    </div>
+    
+    <div class="right-panel">
+        <div class="calendar-header">
+            <button class="calendar-btn" onclick="changeMonth(-1)">◀</button>
+            <h2 id="calendar-month-year" style="margin:0; font-size:20px;">2026年 --月</h2>
+            <button class="calendar-btn" onclick="changeMonth(1)">▶</button>
+        </div>
+        
+        <div class="calendar-grid" id="calendar-grid">
+            </div>
+
+        <div class="editor-section">
+            <div class="editor-title" id="editor-date-title">選擇日期來記錄生活吧！</div>
+            <div id="day-punch-history" style="font-size: 13px; color: #666; margin-bottom: 8px; font-weight: bold;"></div>
+            <textarea id="note-input" placeholder="今天有什麼想紀錄的心情或待辦事項嗎..."></textarea>
+            <button class="btn save-btn" onclick="saveDailyNote()">儲存備忘錄</button>
+            <div class="clear"></div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    // 🌸 雲端金鑰
+    const BIN_ID = '6a3b7243f5f4af5e29272dc4'; 
+    const MASTER_KEY = '$2a$10$hI.UbvJsfQa.7SxfrbZQE./.4pB/55flm6kq88Vuwgt/3IzyMB5ii'; 
+
+    // 🔑 更新後的帳號密碼對照表（已設定大小寫不拘邏輯）
+    const userCredentials = {
+        "ginggingxing": "0979365961",   // 管理者
+        "popoman": "0926682683"         // 打卡者
+    };
+
+    let currentUser = "";
+    let currentDate = new Date(); 
+    let selectedDateStr = ""; 
+    let appData = {}; 
+
+    // 驗證登入 (不限大小寫)
+    function checkLogin() {
+        // 使用 .toLowerCase() 將輸入的帳號自動轉為小寫比對
+        const userIn = document.getElementById('username').value.trim().toLowerCase();
+        const passIn = document.getElementById('password').value.trim();
+        const errorMsg = document.getElementById('login-error');
+
+        if (userCredentials[userIn] && userCredentials[userIn] === passIn) {
+            currentUser = userIn;
+            errorMsg.style.display = 'none';
+            document.getElementById('login-overlay').style.display = 'none'; 
+            document.getElementById('main-system').style.display = 'flex';   
+            
+            // 顯示時把首字母或專屬名稱漂亮呈現
+            const displayName = currentUser === "ginggingxing" ? "GingGingXing (管理者)" : "PopoMan (打卡者)";
+            document.getElementById('user-display').innerText = `👤 目前使用者：${displayName}`;
+            
+            initSystem();
+        } else {
+            errorMsg.style.display = 'block';
+        }
+    }
+
+    // 按下 Enter 鍵直接登入
+    document.querySelectorAll('.login-input').forEach(input => {
+        input.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                checkLogin();
+            }
+        });
+    });
+
+    function initSystem() {
+        updateClock();
+        setInterval(updateClock, 1000);
+        setRandomSlogan();
+        
+        selectedDateStr = formatDateKey(new Date());
+        pullDataFromCloud();
+        setInterval(pullDataFromCloud, 30000);
+    }
+
+    const slogans = [
+        "❤️ 下午睡覺是為了補充滿滿元氣，晚上也要記得早點躺平喔！",
+        "⏰ 超過半夜兩點就不乖囉，身體在抗議了，快快去充電！",
+        "🌟 睡飽飽，沒煩惱！把今天的不開心都交給夢境融化吧。",
+        "🌙 報告打卡者：作息規律、睡眠充足，就是最厲害的養生法。",
+        "🧸 累了就躺下，不管是午覺還是早睡，對身體好都是一級棒！",
+        "🍓 保持好心情的秘訣：按時打卡、好好睡覺、大口吃飯。"
+    ];
+
+    function formatDateKey(date) {
+        const y = date.getFullYear();
+        const m = String(date.getMonth() + 1).padStart(2, '0');
+        const d = String(date.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+    }
+
+    function updateClock() {
+        const now = new Date();
+        const options = { timeZone: 'Asia/Taipei', year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' };
+        document.getElementById('live-date').innerText = new Intl.DateTimeFormat('zh-TW', options).format(now);
+
+        const timeOptions = { timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
+        document.getElementById('clock-display').innerText = new Intl.DateTimeFormat('zh-TW', timeOptions).format(now);
+    }
+
+    function setRandomSlogan() {
+        const randomIndex = Math.floor(Math.random() * slogans.length);
+        document.getElementById('slogan-display').innerText = slogans[randomIndex];
+    }
+
+    function pullDataFromCloud() {
+        document.getElementById('sync-status').innerText = "⏳ 正在同步雲端最新數據...";
+        
+        fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`, {
+            method: 'GET',
+            headers: { 'X-Master-Key': MASTER_KEY }
+        })
+        .then(res => res.json())
+        .then(data => {
+            appData = data.record || {};
+            if (appData.isReseted || appData.status === "ok") {
+                appData = {};
+            }
+            renderCalendar();
+            selectDay(selectedDateStr);
+            document.getElementById('sync-status').innerText = "✅ 已與雲端即時同步";
+        })
+        .catch(err => {
+            console.error(err);
+            document.getElementById('sync-status').innerText = "❌ 同步失敗，切換為本地載入";
+            appData = JSON.parse(localStorage.getItem('macaron_clock_data')) || {};
+            if (appData.isReseted || appData.status === "ok") appData = {};
+            renderCalendar();
+        });
+    }
+
+    function pushDataToCloud() {
+        localStorage.setItem('macaron_clock_data', JSON.stringify(appData));
+        
+        fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Master-Key': MASTER_KEY
+            },
+            body: JSON.stringify(appData)
+        })
+        .then(res => res.json())
+        .then(data => {
+            document.getElementById('sync-status').innerText = "✅ 資料已成功推送到雲端";
+        })
+        .catch(err => console.error(err));
+    }
+
+    function performPunchIn() {
+        const now = new Date();
+        const todayStr = formatDateKey(now);
+        
+        const formatter = new Intl.DateTimeFormat('zh-TW', { timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit', hour12: false });
+        const [{ value: hour },,{ value: minute }] = formatter.formatToParts(now);
+        const currentHour = parseInt(hour, 10);
+
+        let statusSymbol = "";
+        let statusText = "";
+        let statusClass = "";
+
+        if (currentHour >= 2 && currentHour < 12) {
+            statusSymbol = "👹 壞寶寶";
+            statusClass = "bad-baby";
+            statusText = `你在 ${hour}:${minute} 打卡。太晚睡或太晚起囉，給個壞！`;
+        } else {
+            statusSymbol = "🌟 乖寶寶";
+            statusClass = "good-baby";
+            if (currentHour >= 12 && currentHour < 18) {
+                statusText = `內行喔！你在 ${hour}:${minute} 打卡，下午小睡一下身體好！`;
+            } else {
+                statusText = `你在 ${hour}:${minute} 打卡！作息非常優秀，讚！`;
+            }
+        }
+
+        const resultBox = document.getElementById('result-display');
+        resultBox.className = `result-box ${statusClass}`;
+        resultBox.innerHTML = `<div>${statusSymbol}</div><div style="font-size:13px; font-weight:normal; margin-top:4px;">${statusText}</div>`;
+        resultBox.style.display = 'block';
+
+        if (!appData[todayStr]) appData[todayStr] = {};
+        
+        // 記錄打卡時標記是哪一個帳號打的卡
+        const userTag = currentUser === "ginggingxing" ? "Ging" : "Popo";
+        appData[todayStr].punch = `${statusSymbol} (${hour}:${minute})-[${userTag}]`;
+        
+        pushDataToCloud();
+        renderCalendar();
+        if (selectedDateStr === todayStr) {
+            selectDay(todayStr);
+        }
+        setRandomSlogan();
+    }
+
+    function renderCalendar() {
+        const grid = document.getElementById('calendar-grid');
+        const monthYearTitle = document.getElementById('calendar-month-year');
+        grid.innerHTML = ''; 
+        
+        const year = currentDate.getFullYear();
+        const month = currentDate.getMonth();
+        monthYearTitle.innerText = `${year}年 ${month + 1}月`;
+        
+        const weekdays = ['日', '一', '二', '三', '四', '五', '六'];
+        weekdays.forEach(w => {
+            const div = document.createElement('div');
+            div.className = 'weekday';
+            div.innerText = w;
+            grid.appendChild(div);
+        });
+        
+        const firstDayIndex = new Date(year, month, 1).getDay();
+        const totalDays = new Date(year, month + 1, 0).getDate();
+        
+        for (let i = 0; i < firstDayIndex; i++) {
+            grid.appendChild(document.createElement('div'));
+        }
+        
+        const todayStr = formatDateKey(new Date());
+        for (let d = 1; d <= totalDays; d++) {
+            const dayDiv = document.createElement('div');
+            dayDiv.className = 'day';
+            const currentLoopDateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+            
+            if (currentLoopDateStr === todayStr) dayDiv.classList.add('today');
+            if (currentLoopDateStr === selectedDateStr) dayDiv.classList.add('current-selected');
+            
+            dayDiv.innerHTML = `<div>${d}</div>`;
+            
+            if (appData[currentLoopDateStr] && appData[currentLoopDateStr].punch) {
+                const statusDiv = document.createElement('div');
+                statusDiv.className = 'day-status';
+                statusDiv.innerText = appData[currentLoopDateStr].punch.split(' ')[0]; 
+                dayDiv.appendChild(statusDiv);
+            }
+            
+            dayDiv.onclick = () => selectDay(currentLoopDateStr);
+            grid.appendChild(dayDiv);
+        }
+    }
+
+    function changeMonth(direction) {
+        currentDate.setMonth(currentDate.getMonth() + direction);
+        renderCalendar();
+    }
+
+    function selectDay(dateStr) {
+        selectedDateStr = dateStr;
+        
+        document.querySelectorAll('.day').forEach(node => node.classList.remove('current-selected'));
+        
+        const [y, m, d] = dateStr.split('-');
+        document.getElementById('editor-date-title').innerText = `📅 編輯 ${parseInt(m, 10)}月${parseInt(d, 10)}日 的日常紀錄`;
+        
+        const historyZone = document.getElementById('day-punch-history');
+        if (appData[dateStr] && appData[dateStr].punch) {
+            const displayPunch = appData[dateStr].punch.split('-[')[0];
+            historyZone.innerText = `當日打卡：${displayPunch}`;
+            historyZone.style.color = appData[dateStr].punch.includes("乖") ? "#2E7D32" : "#C62828";
+        } else {
+            historyZone.innerText = "當日無打卡紀錄";
+            historyZone.style.color = "#666";
+        }
+        
+        document.getElementById('note-input').value = (appData[dateStr] && appData[dateStr].note) ? appData[dateStr].note : "";
+    }
+
+    function saveDailyNote() {
+        const text = document.getElementById('note-input').value.trim();
+        if (!appData[selectedDateStr]) appData[selectedDateStr] = {};
+        appData[selectedDateStr].note = text;
+        
+        pushDataToCloud();
+        alert("儲存成功囉！🌸");
+    }
+
+    function resetDataWithPassword() {
+        const password = prompt("請輸入重製管理密碼：");
+        
+        if (password === null) return; 
+
+        // 這裡設定當輸入管理者的密碼時允許重製資料
+        if (password === "0979365961") {
+            const confirmDouble = confirm("確定要清空所有的打卡與日記紀錄嗎？此動作無法復原喔！");
+            if (confirmDouble) {
+                appData = { isReseted: true, timestamp: Date.now() }; 
+                document.getElementById('result-display').style.display = 'none';
+                pushDataToCloud(); 
+                appData = {};
+                renderCalendar();
+                selectDay(selectedDateStr);
+                alert("💥 歷史資料已全部重製清空！兩端畫面重新整理後皆會維持清除狀態。");
+            }
+        } else {
+            alert("❌ 密碼錯誤！無法重製資料。");
+        }
+    }
+</script>
+
+</body>
+</html>
