@@ -2,92 +2,95 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>早睡早起身體好 - 專業多用戶版</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>早睡早起 - 雲端行事曆</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;700&display=swap" rel="stylesheet">
     <style>
-        /* 建議沿用你原本精美的 CSS */
-        body { font-family: sans-serif; background: #F6F8FA; display: flex; justify-content: center; padding: 20px; }
-        .panel { background: white; padding: 30px; border-radius: 20px; width: 350px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
-        input { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; }
-        button { width: 100%; padding: 10px; background: #E1BEE7; border: none; border-radius: 8px; cursor: pointer; }
+        :root { --main: #E1BEE7; --accent: #FFB7B2; --bg: #F6F8FA; }
+        body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); display: flex; justify-content: center; padding: 40px; color: #5D5D5D; }
+        .card { background: white; padding: 40px; border-radius: 30px; box-shadow: 0 20px 40px rgba(0,0,0,0.05); width: 100%; max-width: 500px; }
+        h2 { text-align: center; color: #4A4A4A; }
+        .btn { width: 100%; padding: 15px; border: none; border-radius: 15px; cursor: pointer; font-weight: bold; margin-top: 10px; transition: 0.3s; }
+        .btn-main { background: var(--main); color: white; }
+        .calendar { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; margin-top: 20px; }
+        .day { aspect-ratio: 1; border-radius: 12px; background: #f9f9f9; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+        .day.active { background: var(--accent); color: white; }
+        input { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #eee; border-radius: 10px; box-sizing: border-box; }
     </style>
 </head>
 <body>
 
-<div id="auth-panel" class="panel">
-    <h3>用戶系統</h3>
+<div class="card" id="auth-panel">
+    <h2>登入系統</h2>
     <input type="text" id="username" placeholder="帳號">
     <input type="password" id="password" placeholder="密碼">
-    <button id="btn-login" onclick="login()">登入</button>
-    <p id="reg-link" style="font-size:12px; text-align:center; cursor:pointer;" onclick="register()">註冊新帳號</p>
+    <button class="btn btn-main" onclick="login()">登入</button>
+    <button class="btn" style="background:#eee" onclick="register()">註冊</button>
 </div>
 
-<div id="main-panel" class="panel" style="display:none;">
-    <h3 id="welcome"></h3>
-    <div id="admin-view" style="display:none;">
+<div class="card" id="app-panel" style="display:none;">
+    <h2 id="welcome-text"></h2>
+    <div id="admin-controls" style="display:none;">
         <select id="user-select" onchange="loadUserRecord()"></select>
     </div>
-    <div id="record-display"></div>
-    <button onclick="performPunch()">✨ 打卡 (記錄)</button>
-    <button onclick="logout()" style="margin-top:10px; background:#eee;">登出</button>
+    <div class="calendar" id="calendar"></div>
+    <button class="btn btn-main" onclick="performPunch()">✨ 乖寶寶打卡</button>
+    <button class="btn" onclick="logout()">登出</button>
 </div>
 
 <script>
-    // ⚠️ 記得把這行換成你的 Google Script URL
+    // 請務必放入你的 Google Apps Script URL
     var GAS_URL = "https://script.google.com/macros/s/AKfycbwPBDQ2yN9gRM7T9rK-ScvlUc4fWFob5IugGGvzTSFUmDQ8LLE4lXWvl4cwCpk1KGwyfg/exec";
-    
-    // 模擬用戶資料庫 (因為 GitHub 無法存真實 DB，這裡用 LocalStorage 模擬)
-    function getUsers() { return JSON.parse(localStorage.getItem('users') || '{"ging": "0979365961"}'); }
+    var appData = {};
 
     function login() {
-        var u = document.getElementById('username').value;
-        var p = document.getElementById('password').value;
-        var users = getUsers();
+        let u = document.getElementById('username').value;
+        let p = document.getElementById('password').value;
+        let db = JSON.parse(localStorage.getItem('users') || '{"ging": "0979365961"}');
         
-        if (users[u] === p) {
+        if(db[u] === p) {
             localStorage.setItem('current_user', u);
-            initApp();
+            showApp(u);
         } else { alert("帳密錯誤"); }
     }
 
     function register() {
-        var u = document.getElementById('username').value;
-        var p = document.getElementById('password').value;
-        var users = getUsers();
-        if(users[u]) return alert("帳號已存在");
-        users[u] = p;
-        localStorage.setItem('users', JSON.stringify(users));
-        alert("註冊成功！請登入。");
+        let u = document.getElementById('username').value;
+        let p = document.getElementById('password').value;
+        let db = JSON.parse(localStorage.getItem('users') || '{"ging": "0979365961"}');
+        if(db[u]) return alert("已存在");
+        db[u] = p;
+        localStorage.setItem('users', JSON.stringify(db));
+        alert("註冊成功！");
     }
 
-    function initApp() {
-        var u = localStorage.getItem('current_user');
+    function showApp(u) {
         document.getElementById('auth-panel').style.display = 'none';
-        document.getElementById('main-panel').style.display = 'block';
-        document.getElementById('welcome').innerText = "用戶：" + u;
+        document.getElementById('app-panel').style.display = 'block';
+        document.getElementById('welcome-text').innerText = "歡迎, " + u;
+        if(u === 'ging') document.getElementById('admin-controls').style.display = 'block';
+        renderCalendar();
+    }
 
-        if (u === 'ging') {
-            document.getElementById('admin-view').style.display = 'block';
-            populateUserList();
+    function renderCalendar() {
+        let grid = document.getElementById('calendar');
+        grid.innerHTML = '';
+        for(let i=1; i<=30; i++) {
+            let div = document.createElement('div');
+            div.className = 'day';
+            div.innerText = i;
+            grid.appendChild(div);
         }
     }
 
-    function populateUserList() {
-        var users = Object.keys(getUsers());
-        var select = document.getElementById('user-select');
-        users.forEach(u => select.innerHTML += `<option value="${u}">${u}</option>`);
-    }
-
     function performPunch() {
-        var u = localStorage.getItem('current_user');
-        var date = new Date().toISOString().split('T')[0];
-        var punch = new Date().getHours() >= 2 ? "😈 壞寶寶" : "🌟 乖寶寶";
+        let u = localStorage.getItem('current_user');
+        let d = new Date().toISOString().split('T')[0];
+        let punch = new Date().getHours() >= 2 ? "壞寶寶" : "乖寶寶";
         
-        // 傳送給 Google Sheets
-        fetch(GAS_URL, {
-            method: "POST", mode: "no-cors",
-            body: JSON.stringify({ date: date, punch: punch, user: u })
-        });
-        alert("打卡成功：" + punch);
+        fetch(GAS_URL, { method: "POST", mode: "no-cors", body: JSON.stringify({ date: d, punch: punch, user: u }) });
+        alert("已打卡：" + punch);
+        renderCalendar();
     }
 
     function logout() { localStorage.removeItem('current_user'); location.reload(); }
