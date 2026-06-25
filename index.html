@@ -125,7 +125,7 @@
     var isRegisterMode = false, currentUser = "", targetUserBinId = "", currentViewingUser = ""; 
     var globalUsersDatabase = {}, appData = {}, currentDate = new Date(), selectedDateStr = ""; 
     var isDataLoaded = false; 
-    var clockInterval; // 💡 新增：防止時鐘計時器重疊
+    var clockInterval; 
 
     function getLocalYYYYMMDD(d) {
         return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
@@ -182,11 +182,7 @@
                     globalUsersDatabase[userIn] = { password: passIn, binId: newBin.metadata.id };
                     return fetch('https://api.jsonbin.io/v3/b/' + GLOBAL_REG_BIN, { 
                         method: 'PUT', 
-                        headers: { 
-                            'Content-Type': 'application/json', 
-                            'X-Master-Key': MASTER_KEY,
-                            'X-Bin-Versioning': 'false' // 💡 確保總資料庫也不會被塞爆
-                        }, 
+                        headers: { 'Content-Type': 'application/json', 'X-Master-Key': MASTER_KEY, 'X-Bin-Versioning': 'false' }, 
                         body: JSON.stringify(globalUsersDatabase) 
                     });
                 }).then(() => { alert("註冊成功！"); toggleAuthMode(); });
@@ -216,7 +212,7 @@
     function performLogout() { localStorage.clear(); window.location.reload(); }
 
     function initSystem() {
-        if (clockInterval) clearInterval(clockInterval); // 💡 清除舊的時鐘
+        if (clockInterval) clearInterval(clockInterval);
         clockInterval = setInterval(() => { var now = new Date(); document.getElementById('clock-display').innerText = now.toTimeString().split(' ')[0]; }, 1000);
         selectedDateStr = getLocalYYYYMMDD(new Date());
         pullDataFromCloud();
@@ -245,12 +241,12 @@
             headers: { 
                 'Content-Type': 'application/json', 
                 'X-Master-Key': MASTER_KEY,
-                'X-Bin-Versioning': 'false' // 💡 終極關鍵：不建立新版本，打破 100 次存檔限制！
+                'X-Bin-Versioning': 'false' 
             }, 
             body: JSON.stringify(appData) 
         })
         .then(res => {
-            if (!res.ok) throw new Error("伺服器拒絕請求，狀態碼：" + res.status); // 💡 誠實防呆檢查
+            if (!res.ok) throw new Error("伺服器拒絕請求，狀態碼：" + res.status); 
             return res.json();
         })
         .then(() => { 
@@ -271,7 +267,9 @@
         if (!appData[todayStr]) appData[todayStr] = {};
 
         var hour = now.getHours();
-        var punchStatus = (hour >= 2 && hour < 12) ? "😈 壞寶寶" : "🌟 乖寶寶";
+        
+        // 🚨 壞寶寶定義：從凌晨 2 點 一直到 下午 5 點 (17 點) 打卡，通通都是壞寶寶！
+        var punchStatus = (hour >= 2 && hour < 17) ? "😈 壞寶寶" : "🌟 乖寶寶";
 
         appData[todayStr].punch = punchStatus + " (" + now.toTimeString().substring(0,5) + ")";
         pushDataToCloud(() => { renderCalendar(); selectDay(todayStr); });
