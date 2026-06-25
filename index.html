@@ -314,17 +314,6 @@
 </head>
 <body>
 
-<script>
-    window.onerror = function(message, source, lineno, colno, error) {
-        var errBox = document.getElementById('login-error');
-        if(errBox) {
-            errBox.style.display = 'block';
-            errBox.innerHTML = "⚠️ 系統異常提示：<br>" + message;
-        }
-        return true; 
-    };
-</script>
-
 <div id="login-overlay">
     <div class="login-box">
         <div class="tag-title" style="font-size: 14px; margin-bottom: 10px;" id="form-tag">🔐 安全登入系統</div>
@@ -386,7 +375,7 @@
         <div class="history-list-box">
             <div class="history-list-title">
                 <span>📋 歷史打卡時間紀錄面板</span>
-                <span id="history-user-badge" style="font-size:12px; color:#E1BEE7; font-weight:bold;">帳號: --</span>
+                <span id="history-user-badge" style="font-size:12px; color:#B5E2FA; font-weight:bold;">帳號: --</span>
             </div>
             <div class="history-items-container" id="history-items-list">
                 <div style="color:#aaa; text-align:center; padding-top:20px;">尚無歷史打卡資料</div>
@@ -432,6 +421,38 @@
     var syncIntervalId = null;
     var base64ImageStr = ""; 
 
+    // ✨ 初始化載入：檢查本地快取，防止刷新網頁遺失身分
+    window.onload = function() {
+        var savedUser = localStorage.getItem('health_user');
+        var savedBinId = localStorage.getItem('health_binId');
+        var savedViewingUser = localStorage.getItem('health_viewUser');
+        
+        if (savedUser && savedBinId) {
+            currentUser = savedUser;
+            targetUserBinId = savedBinId;
+            currentViewingUser = savedViewingUser || savedUser;
+            
+            document.getElementById('login-overlay').style.display = 'none';
+            document.getElementById('main-system').style.display = 'flex';
+            
+            if(HARDCODED_USERS[currentUser] && HARDCODED_USERS[currentUser].isAdmin) {
+                document.getElementById('user-display').innerText = "👑 管理員：" + currentUser;
+                fetch('https://api.jsonbin.io/v3/b/' + GLOBAL_REG_BIN + '/latest', {
+                    method: 'GET', headers: { 'X-Master-Key': MASTER_KEY }
+                }).then(function(r){ return r.json(); }).then(function(d){ 
+                    globalUsersDatabase = d.record || {};
+                    setupAdminConsole();
+                    document.getElementById('admin-select-user').value = currentViewingUser;
+                    adminSwitchUserView(); 
+                }).catch(function(e){ console.log(e); });
+            } else {
+                document.getElementById('user-display').innerText = "👤 使用者：" + currentUser;
+                document.getElementById('admin-user-selector-box').style.display = 'none';
+            }
+            initSystem();
+        }
+    };
+
     function toggleAuthMode() {
         isRegisterMode = !isRegisterMode;
         var tag = document.getElementById('form-tag');
@@ -458,89 +479,92 @@
     function showError(msg) { var errorMsg = document.getElementById('login-error'); if(errorMsg) { errorMsg.innerText = msg; errorMsg.style.display = 'block'; } }
 
     function handleFormSubmit() {
-        try {
-            var userIn = document.getElementById('username').value.trim().toLowerCase();
-            var passIn = document.getElementById('password').value.trim();
-            var errorMsg = document.getElementById('login-error');
-            var submitBtn = document.getElementById('btn-main-submit');
-            
-            errorMsg.style.display = 'none';
-            if(!userIn || !passIn) { showError("❌ 請填寫帳號及密碼！"); return; }
+        var userIn = document.getElementById('username').value.trim().toLowerCase();
+        var passIn = document.getElementById('password').value.trim();
+        var errorMsg = document.getElementById('login-error');
+        var submitBtn = document.getElementById('btn-main-submit');
+        
+        errorMsg.style.display = 'none';
+        if(!userIn || !passIn) { showError("❌ 請填寫帳號及密碼！"); return; }
 
-            var originalText = isRegisterMode ? "確認註冊新帳號" : "登入";
-            submitBtn.innerText = "連線驗證中...";
-            submitBtn.disabled = true;
+        var originalText = isRegisterMode ? "確認註冊新帳號" : "登入";
+        submitBtn.innerText = "連線驗證中...";
+        submitBtn.disabled = true;
+        var restoreButton = function() { submitBtn.innerText = originalText; submitBtn.disabled = false; };
 
-            var restoreButton = function() { submitBtn.innerText = originalText; submitBtn.disabled = false; };
+        // 🎯 固定的內建帳號登入
+        if(!isRegisterMode && HARDCODED_USERS[userIn]) {
+            if(HARDCODED_USERS[userIn].pass === passIn) {
+                currentUser = userIn; currentViewingUser = userIn; targetUserBinId = HARDCODED_USERS[userIn].binId;
+                
+                // ✨ 修正重點：確實儲存快取，防止重新整理消失
+                localStorage.setItem('health_user', currentUser);
+                localStorage.setItem('health_binId', targetUserBinId);
+                localStorage.setItem('health_viewUser', currentViewingUser);
 
-            if(!isRegisterMode && HARDCODED_USERS[userIn]) {
-                if(HARDCODED_USERS[userIn].pass === passIn) {
-                    currentUser = userIn; currentViewingUser = userIn; targetUserBinId = HARDCODED_USERS[userIn].binId;
+                document.getElementById('login-overlay').style.display = 'none';
+                document.getElementById('main-system').style.display = 'flex';
+                if(HARDCODED_USERS[userIn].isAdmin) {
+                    document.getElementById('user-display').innerText = "👑 管理員：" + currentUser;
+                    setupAdminConsole(); 
+                } else {
+                    document.getElementById('user-display').innerText = "👤 使用者：" + currentUser;
+                    document.getElementById('admin-user-selector-box').style.display = 'none';
+                }
+                document.getElementById('username').value = "";
+                document.getElementById('password').value = "";
+
+                initSystem();
+                restoreButton();
+                return;
+            } else { showError("❌ 密碼不正確！"); restoreButton(); return; }
+        }
+
+        if(!/^[a-z0-9]+$/.test(userIn)) { showError("❌ 帳號僅能使用英文小寫與數字喔！"); restoreButton(); return; }
+
+        // 🎯 雲端註冊帳號登入
+        fetch('https://api.jsonbin.io/v3/b/' + GLOBAL_REG_BIN + '/latest', {
+            method: 'GET', headers: { 'X-Master-Key': MASTER_KEY }
+        })
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+            globalUsersDatabase = data.record || {};
+            if(isRegisterMode) {
+                if(globalUsersDatabase[userIn] || HARDCODED_USERS[userIn]) { showError("❌ 該帳號已被佔用！"); restoreButton(); return; }
+                fetch('https://api.jsonbin.io/v3/b', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Master-Key': MASTER_KEY, 'X-Bin-Private': 'true' },
+                    body: JSON.stringify({ greeting: "Welcome!" })
+                })
+                .then(function(res) { return res.json(); })
+                .then(function(newBinData) {
+                    globalUsersDatabase[userIn] = { password: passIn, binId: newBinData.metadata.id };
+                    return fetch('https://api.jsonbin.io/v3/b/' + GLOBAL_REG_BIN, {
+                        method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Master-Key': MASTER_KEY },
+                        body: JSON.stringify(globalUsersDatabase)
+                    });
+                })
+                .then(function() { alert("🎉 註冊成功！請直接登入！"); toggleAuthMode(); restoreButton(); })
+                .catch(function() { showError("❌ 註冊通訊失敗。"); restoreButton(); });
+            } else {
+                if(globalUsersDatabase[userIn] && globalUsersDatabase[userIn].password === passIn) {
+                    currentUser = userIn; currentViewingUser = userIn; targetUserBinId = globalUsersDatabase[userIn].binId;
+                    
+                    // ✨ 修正重點：確實儲存雲端註冊帳號的本地快取
+                    localStorage.setItem('health_user', currentUser);
+                    localStorage.setItem('health_binId', targetUserBinId);
+                    localStorage.setItem('health_viewUser', currentViewingUser);
+
                     document.getElementById('login-overlay').style.display = 'none';
                     document.getElementById('main-system').style.display = 'flex';
-                    if(HARDCODED_USERS[userIn].isAdmin) {
-                        document.getElementById('user-display').innerText = "👑 管理員：" + currentUser;
-                        setupAdminConsole(); 
-                    } else {
-                        document.getElementById('user-display').innerText = "👤 使用者：" + currentUser;
-                        document.getElementById('admin-user-selector-box').style.display = 'none';
-                    }
+                    document.getElementById('user-display').innerText = "👤 使用者：" + currentUser;
+                    document.getElementById('admin-user-selector-box').style.display = 'none';
                     document.getElementById('username').value = "";
                     document.getElementById('password').value = "";
-
-                    setTimeout(function() {
-                        initSystem();
-                        fetch('https://api.jsonbin.io/v3/b/' + GLOBAL_REG_BIN + '/latest', {
-                            method: 'GET', headers: { 'X-Master-Key': MASTER_KEY }
-                        }).then(function(r){ return r.json(); }).then(function(d){ 
-                            globalUsersDatabase = d.record || {};
-                            if(HARDCODED_USERS[currentUser] && HARDCODED_USERS[currentUser].isAdmin) setupAdminConsole();
-                        }).catch(function(e){ console.log(e); });
-                    }, 100);
-                    restoreButton();
-                    return;
-                } else { showError("❌ 密碼不正確！"); restoreButton(); return; }
+                    initSystem();
+                } else { showError("❌ 帳號或密碼不正確！"); }
+                restoreButton();
             }
-
-            if(!/^[a-z0-9]+$/.test(userIn)) { showError("❌ 帳號僅能使用英文小寫與數字喔！"); restoreButton(); return; }
-
-            fetch('https://api.jsonbin.io/v3/b/' + GLOBAL_REG_BIN + '/latest', {
-                method: 'GET', headers: { 'X-Master-Key': MASTER_KEY }
-            })
-            .then(function(res) { return res.json(); })
-            .then(function(data) {
-                globalUsersDatabase = data.record || {};
-                if(isRegisterMode) {
-                    if(globalUsersDatabase[userIn] || HARDCODED_USERS[userIn]) { showError("❌ 該帳號已被佔用，請換一個名字！"); restoreButton(); return; }
-                    fetch('https://api.jsonbin.io/v3/b', {
-                        method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Master-Key': MASTER_KEY, 'X-Bin-Private': 'true' },
-                        body: JSON.stringify({ greeting: "Welcome!" })
-                    })
-                    .then(function(res) { return res.json(); })
-                    .then(function(newBinData) {
-                        globalUsersDatabase[userIn] = { password: passIn, binId: newBinData.metadata.id };
-                        return fetch('https://api.jsonbin.io/v3/b/' + GLOBAL_REG_BIN, {
-                            method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Master-Key': MASTER_KEY },
-                            body: JSON.stringify(globalUsersDatabase)
-                        });
-                    })
-                    .then(function() { alert("🎉 註冊成功！請直接登入！"); toggleAuthMode(); restoreButton(); })
-                    .catch(function() { showError("❌ 註冊通訊失敗。"); restoreButton(); });
-                } else {
-                    if(globalUsersDatabase[userIn] && globalUsersDatabase[userIn].password === passIn) {
-                        currentUser = userIn; currentViewingUser = userIn; targetUserBinId = globalUsersDatabase[userIn].binId;
-                        document.getElementById('login-overlay').style.display = 'none';
-                        document.getElementById('main-system').style.display = 'flex';
-                        document.getElementById('user-display').innerText = "👤 使用者：" + currentUser;
-                        document.getElementById('admin-user-selector-box').style.display = 'none';
-                        document.getElementById('username').value = "";
-                        document.getElementById('password').value = "";
-                        setTimeout(function() { initSystem(); }, 100);
-                    } else { showError("❌ 帳號或密碼不正確！"); }
-                    restoreButton();
-                }
-            }).catch(function(err) { showError("❌ 連線異常：" + err.message); restoreButton(); });
-        } catch (e) { restoreButton(); }
+        }).catch(function(err) { showError("❌ 連線異常：" + err.message); restoreButton(); });
     }
 
     function setupAdminConsole() {
@@ -549,13 +573,14 @@
         if(!selector || !box) return;
         selector.innerHTML = ""; box.style.display = 'block';
         Object.keys(HARDCODED_USERS).forEach(function(user) {
-            var opt = document.createElement('option'); opt.value = user; opt.innerText = (user === currentUser) ? "自己 (" + user + ")" : "固定用戶：" + user;
-            if(user === currentUser) opt.selected = true;
+            var opt = document.createElement('option'); opt.value = user; opt.innerText = (user === currentUser) ? "自己 (" + user + ")" : "內建用戶：" + user;
+            if(user === currentViewingUser) opt.selected = true;
             selector.appendChild(opt);
         });
         Object.keys(globalUsersDatabase).forEach(function(user) {
             if(!HARDCODED_USERS[user]) {
                 var opt = document.createElement('option'); opt.value = user; opt.innerText = "註冊用戶：" + user;
+                if(user === currentViewingUser) opt.selected = true;
                 selector.appendChild(opt);
             }
         });
@@ -564,6 +589,7 @@
     function adminSwitchUserView() {
         var selectedUser = document.getElementById('admin-select-user').value;
         currentViewingUser = selectedUser;
+        localStorage.setItem('health_viewUser', currentViewingUser); // 紀錄管理員當前看誰
         
         if(HARDCODED_USERS[selectedUser]) { targetUserBinId = HARDCODED_USERS[selectedUser].binId; } 
         else { targetUserBinId = globalUsersDatabase[selectedUser].binId; }
@@ -580,7 +606,6 @@
             document.getElementById('note-input').readOnly = false;
         }
 
-        // 切換時清除舊有的畫面快取，防錯亂
         base64ImageStr = "";
         var imgEl = document.getElementById('food-img-element');
         if(imgEl) { imgEl.src = ""; imgEl.style.display = 'none'; }
@@ -593,13 +618,9 @@
     }
 
     function performLogout() {
-        currentUser = ""; currentViewingUser = ""; targetUserBinId = "";
+        localStorage.clear(); // 清除全快取
         if (syncIntervalId) clearInterval(syncIntervalId);
-        document.getElementById('main-system').style.display = 'none';
-        document.getElementById('login-overlay').style.display = 'flex';
-        document.getElementById('username').value = "";
-        document.getElementById('password').value = "";
-        document.getElementById('result-display').style.display = 'none';
+        window.location.reload();
     }
 
     function initSystem() {
@@ -676,7 +697,7 @@
         .then(function(data) {
             appData = data.record || {};
             renderCalendar();
-            renderRightHistoryPanel(); // 刷新右側面板
+            renderRightHistoryPanel(); 
             selectDay(selectedDateStr);
             if(syncStatusEl) syncStatusEl.innerText = "✅ 已即時同步 [" + currentViewingUser + "] 的紀錄";
         })
@@ -695,7 +716,6 @@
         }).catch(function(err) { console.log(err); });
     }
 
-    /* 📋 右側面板：重新渲染全帳號歷史打卡列表 */
     function renderRightHistoryPanel() {
         var container = document.getElementById('history-items-list');
         var badge = document.getElementById('history-user-badge');
@@ -703,7 +723,6 @@
         badge.innerText = "帳號: " + currentViewingUser;
         container.innerHTML = "";
 
-        // 篩選出具備打卡紀錄的所有日期
         var punchDates = Object.keys(appData).filter(function(key) {
             return key.match(/^\d{4}-\d{2}-\d{2}$/) && appData[key].punch;
         }).sort().reverse();
@@ -730,7 +749,7 @@
         var now = new Date();
         var todayStr = formatDateKey(now);
         
-        // 🔒 限制：一天只能打卡一次安全檢查
+        // 🔒 限制：一天只能打卡一次
         if (appData[todayStr] && appData[todayStr].punch) {
             alert("⚠️ 今天已經打過卡囉！明天再繼續保持吧！");
             return;
@@ -761,7 +780,7 @@
         
         pushDataToCloud();
         renderCalendar();
-        renderRightHistoryPanel(); // 同步更新右邊面板
+        renderRightHistoryPanel(); 
         selectDay(todayStr);
         setRandomSlogan(); 
     }
@@ -817,8 +836,6 @@
         selectedDateStr = dateStr;
         document.querySelectorAll('.day').forEach(function(node) { node.classList.remove('current-selected'); });
         
-        // 嘗試加入選取高亮樣式
-        var days = document.querySelectorAll('.day');
         var parts = dateStr.split('-');
         var titleEl = document.getElementById('editor-date-title');
         if(titleEl) titleEl.innerText = "📅 觀看/編輯 " + parseInt(parts[1], 10) + "月" + parseInt(parts[2], 10) + "日 的日常紀錄";
@@ -849,7 +866,6 @@
         var noteIn = document.getElementById('note-input');
         if(noteIn) noteIn.value = (appData[dateStr] && appData[dateStr].note) ? appData[dateStr].note : "";
         
-        // ✨ 安全防護：避免物件渲染前執行的噴錯
         var fileIn = document.getElementById('photo-file-input');
         if(fileIn) { try { fileIn.value = ""; } catch(e) {} }
     }
