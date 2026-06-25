@@ -395,7 +395,7 @@
     var syncIntervalId = null;
     var base64ImageStr = ""; 
 
-    // ✨ 網頁載入時自動檢查 LocalStorage 狀態，實現重新整理不登出
+    // 網頁載入時自動檢查 LocalStorage 狀態，實現重新整理不登出
     window.onload = function() {
         var savedUser = localStorage.getItem('health_user');
         var savedBinId = localStorage.getItem('health_binId');
@@ -411,14 +411,13 @@
             
             if(HARDCODED_USERS[currentUser] && HARDCODED_USERS[currentUser].isAdmin) {
                 document.getElementById('user-display').innerText = "👑 管理員：" + currentUser;
-                // 讀取全域註冊庫名單以建立管理員下拉選單
                 fetch('https://api.jsonbin.io/v3/b/' + GLOBAL_REG_BIN + '/latest', {
                     method: 'GET', headers: { 'X-Master-Key': MASTER_KEY }
                 }).then(function(r){ return r.json(); }).then(function(d){ 
                     globalUsersDatabase = d.record || {};
                     setupAdminConsole();
                     document.getElementById('admin-select-user').value = currentViewingUser;
-                    adminSwitchUserView(true); // 帶入 true 代表網頁初始觸發，此時不重複觸發多餘的 pull 請求
+                    adminSwitchUserView(true); 
                 }).catch(function(e){ console.log("名單載入延遲", e); });
             } else {
                 document.getElementById('user-display').innerText = "👤 使用者：" + currentUser;
@@ -493,7 +492,6 @@
                     currentViewingUser = userIn;
                     targetUserBinId = HARDCODED_USERS[userIn].binId;
                     
-                    // 寫入快取
                     localStorage.setItem('health_user', currentUser);
                     localStorage.setItem('health_binId', targetUserBinId);
                     localStorage.setItem('health_viewUser', currentViewingUser);
@@ -566,7 +564,7 @@
                         var allocatedBinId = newBinData.metadata.id;
                         globalUsersDatabase[userIn] = { password: passIn, binId: allocatedBinId };
                         
-                        return fetch('https://api.jsonbin.io/v3/b/' + GLOBAL_REG_BIN + '/latest', {
+                        return fetch('https://api.jsonbin.io/v3/b/' + GLOBAL_REG_BIN, {
                             method: 'PUT',
                             headers: { 'Content-Type': 'application/json', 'X-Master-Key': MASTER_KEY },
                             body: JSON.stringify(globalUsersDatabase)
@@ -588,7 +586,6 @@
                         currentViewingUser = userIn;
                         targetUserBinId = globalUsersDatabase[userIn].binId;
 
-                        // 寫入快取
                         localStorage.setItem('health_user', currentUser);
                         localStorage.setItem('health_binId', targetUserBinId);
                         localStorage.setItem('health_viewUser', currentViewingUser);
@@ -674,7 +671,7 @@
 
     function performLogout() {
         currentUser = ""; currentViewingUser = ""; targetUserBinId = "";
-        localStorage.clear(); // 清除本機登入快取
+        localStorage.clear(); 
         if (syncIntervalId) clearInterval(syncIntervalId);
         document.getElementById('main-system').style.display = 'none';
         document.getElementById('login-overlay').style.display = 'flex';
@@ -689,6 +686,7 @@
         window.clockIntervalId = setInterval(updateClock, 1000);
         selectedDateStr = formatDateKey(new Date());
         
+        // 🛡️ 重要修正：先去拉取雲端資料，由 pullDataFromCloud 的 Promise 回應內部去觸發 selectDay，防止時間序錯亂
         pullDataFromCloud();
         if (syncIntervalId) clearInterval(syncIntervalId);
         syncIntervalId = setInterval(pullDataFromCloud, 30000);
@@ -727,7 +725,6 @@
         if(sloganEl) sloganEl.innerText = slogans[randomIndex];
     }
 
-    // ⚡ 核心機制輔助：建立或取得目前看的人的資料夾分流 (User Namespace)，避免直接全面覆蓋
     function getUserDataNode(userKey) {
         if(!appData[userKey]) {
             appData[userKey] = {};
@@ -772,14 +769,18 @@
         if (!targetUserBinId) return;
         var syncStatusEl = document.getElementById('sync-status');
         if(syncStatusEl) syncStatusEl.innerText = "⏳ 讀取 [" + currentViewingUser + "] 的獨立雲端盒...";
+        
         fetch('https://api.jsonbin.io/v3/b/' + targetUserBinId + '/latest', {
             method: 'GET', headers: { 'X-Master-Key': MASTER_KEY }
         })
         .then(function(res) { return res.json(); })
         .then(function(data) {
             appData = data.record || {};
+            
+            // 🛡️ 重要修正：確保資料「拿到之後」，才渲染日曆與選擇當天，不再讓空白值洗掉歷史暫存！
             renderCalendar();
             selectDay(selectedDateStr);
+            
             if(syncStatusEl) syncStatusEl.innerText = "✅ 已即時同步 [" + currentViewingUser + "] 的紀錄";
         })
         .catch(function(err) {
@@ -825,7 +826,6 @@
             resultBox.style.display = 'block';
         }
 
-        // 🛡️ 修正：將打卡寫入到各自對應的使用者空間
         var userNode = getUserDataNode(currentUser);
         if (!userNode[todayStr]) userNode[todayStr] = {};
         userNode[todayStr].punch = statusSymbol + " (" + hour + ":" + minute + ")";
@@ -853,7 +853,6 @@
         for (var i = 0; i < firstDayIndex; i++) grid.appendChild(document.createElement('div'));
         
         var todayStr = formatDateKey(new Date());
-        // 🛡️ 修正：月曆渲染讀取當前正在看的使用者的獨立分流
         var userNode = getUserDataNode(currentViewingUser);
         
         for (var d = 1; d <= totalDays; d++) {
@@ -896,7 +895,6 @@
         var titleEl = document.getElementById('editor-date-title');
         if(titleEl) titleEl.innerText = "📅 觀看/編輯 " + parseInt(m, 10) + "月" + parseInt(d, 10) + "日 的日常紀錄";
         
-        // 🛡️ 修正：讀取當前正在查看的使用者紀錄
         var userNode = getUserDataNode(currentViewingUser);
         var historyZone = document.getElementById('day-punch-history');
         if(historyZone) {
@@ -934,7 +932,6 @@
 
     function saveDailyNote() {
         var text = document.getElementById('note-input').value.trim();
-        // 🛡️ 修正：永遠寫入目前自己（操作者）的帳號節點中，不會蓋到別人
         var userNode = getUserDataNode(currentUser);
         if (!userNode[selectedDateStr]) userNode[selectedDateStr] = {};
         
