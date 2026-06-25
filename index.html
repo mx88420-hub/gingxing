@@ -163,34 +163,75 @@
         document.getElementById('switch-mode-btn').innerText = isRegisterMode ? "已有帳號？返回登入" : "還沒有帳號？免費註冊";
     }
 
+    // 🚨 關鍵修復：替註冊/登入按鈕加上完整的錯誤處理與載入狀態
     function handleFormSubmit() {
         var userIn = document.getElementById('username').value.trim().toLowerCase();
         var passIn = document.getElementById('password').value.trim();
+        var btn = document.getElementById('btn-main-submit'); // 取得按鈕元素
+
         if(!userIn || !passIn) return alert("請填寫帳號及密碼！");
         
+        // 內建管理員直接放行
         if(!isRegisterMode && HARDCODED_USERS[userIn] && HARDCODED_USERS[userIn].pass === passIn) {
             localStorage.setItem('health_user', userIn); localStorage.setItem('health_binId', HARDCODED_USERS[userIn].binId); window.location.reload(); return;
         }
         
+        // 按下後先鎖定按鈕，防止狂按，並提示連線中
+        btn.innerText = "⏳ 連線中...";
+        btn.disabled = true;
+
         fetch('https://api.jsonbin.io/v3/b/' + GLOBAL_REG_BIN + '/latest', { method: 'GET', headers: { 'X-Master-Key': MASTER_KEY } })
-        .then(res => res.json()).then(data => {
+        .then(res => {
+            if (!res.ok) throw new Error("讀取全球用戶庫失敗 (代碼: " + res.status + ")");
+            return res.json();
+        })
+        .then(data => {
             globalUsersDatabase = data.record || {};
             if(isRegisterMode) {
-                if(globalUsersDatabase[userIn]) return alert("帳號被佔用！");
-                fetch('https://api.jsonbin.io/v3/b', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Master-Key': MASTER_KEY, 'X-Bin-Private': 'true' }, body: JSON.stringify({}) })
-                .then(res => res.json()).then(newBin => {
+                if(globalUsersDatabase[userIn]) {
+                    btn.innerText = "註冊"; btn.disabled = false;
+                    return alert("❌ 這個帳號已經被註冊過囉！請換一個。");
+                }
+                
+                // 嘗試建立專屬的新雲端空間
+                return fetch('https://api.jsonbin.io/v3/b', { 
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json', 'X-Master-Key': MASTER_KEY, 'X-Bin-Private': 'true' }, 
+                    body: JSON.stringify({}) 
+                })
+                .then(res => {
+                    if (!res.ok) throw new Error("無法建立新用戶空間！\n\n(可能原因：JSONBin 的免費額度已經被用完了)");
+                    return res.json();
+                })
+                .then(newBin => {
                     globalUsersDatabase[userIn] = { password: passIn, binId: newBin.metadata.id };
                     return fetch('https://api.jsonbin.io/v3/b/' + GLOBAL_REG_BIN, { 
                         method: 'PUT', 
                         headers: { 'Content-Type': 'application/json', 'X-Master-Key': MASTER_KEY, 'X-Bin-Versioning': 'false' }, 
                         body: JSON.stringify(globalUsersDatabase) 
                     });
-                }).then(() => { alert("註冊成功！"); toggleAuthMode(); });
+                })
+                .then(res => {
+                    if (!res.ok) throw new Error("無法更新全球用戶名單！");
+                    alert("🎉 註冊成功！請直接登入。"); 
+                    btn.disabled = false;
+                    toggleAuthMode(); // 切換回登入模式
+                });
             } else {
                 if(globalUsersDatabase[userIn] && globalUsersDatabase[userIn].password === passIn) {
                     localStorage.setItem('health_user', userIn); localStorage.setItem('health_binId', globalUsersDatabase[userIn].binId); window.location.reload();
-                } else { alert("帳號密碼錯誤"); }
+                } else { 
+                    alert("❌ 帳號或密碼錯誤"); 
+                    btn.innerText = "登入"; btn.disabled = false;
+                }
             }
+        })
+        .catch(err => {
+            // 🚨 如果發生任何錯誤，會跳到這裡並顯示給使用者看，按鈕也會恢復
+            console.error(err);
+            alert("⚠️ 系統發生錯誤：\n" + err.message);
+            btn.innerText = isRegisterMode ? "註冊" : "登入"; 
+            btn.disabled = false;
         });
     }
 
@@ -209,10 +250,9 @@
         lockInterfaceForLoading(); appData = {}; initSystem();
     }
 
-    // 🚨 關鍵修復 1：登出時絕對不可以使用 localStorage.clear()！這會把辛辛苦苦存的紀錄都刪掉！
     function performLogout() { 
-        localStorage.removeItem('health_user'); // 只移除登入帳號
-        localStorage.removeItem('health_binId'); // 只移除雲端鑰匙
+        localStorage.removeItem('health_user'); 
+        localStorage.removeItem('health_binId'); 
         window.location.reload(); 
     }
 
@@ -221,13 +261,12 @@
         clockInterval = setInterval(() => { var now = new Date(); document.getElementById('clock-display').innerText = now.toTimeString().split(' ')[0]; }, 1000);
         selectedDateStr = getLocalYYYYMMDD(new Date());
         
-        // 🚨 關鍵修復 2：優先從瀏覽器本地拿資料！
         var localBackup = localStorage.getItem('appDataBackup_' + currentViewingUser);
         if (localBackup) {
             appData = JSON.parse(localBackup);
             enableUI();
         }
-        pullDataFromCloud(); // 同時在背景嘗試同步雲端
+        pullDataFromCloud(); 
     }
 
     function enableUI() {
@@ -245,8 +284,8 @@
         fetch('https://api.jsonbin.io/v3/b/' + targetUserBinId + '/latest', { method: 'GET', headers: { 'X-Master-Key': MASTER_KEY } })
         .then(res => res.json()).then(data => {
             if (data.record && Object.keys(data.record).length > 0) {
-                appData = Object.assign({}, appData, data.record); // 合併雲端與本地資料
-                localStorage.setItem('appDataBackup_' + currentViewingUser, JSON.stringify(appData)); // 更新本地備份
+                appData = Object.assign({}, appData, data.record); 
+                localStorage.setItem('appDataBackup_' + currentViewingUser, JSON.stringify(appData)); 
             }
             enableUI();
         }).catch(err => {
@@ -258,11 +297,9 @@
     function pushDataToCloud(callback) {
         if (!targetUserBinId || !isDataLoaded) return;
         
-        // 🚨 關鍵修復 3：存檔時，第一時間寫入瀏覽器本地防爆！
         localStorage.setItem('appDataBackup_' + currentViewingUser, JSON.stringify(appData));
         document.getElementById('sync-status').innerText = "✅ 已安全儲存於本地";
 
-        // 接著才慢慢嘗試丟到雲端
         fetch('https://api.jsonbin.io/v3/b/' + targetUserBinId, { 
             method: 'PUT', 
             headers: { 'Content-Type': 'application/json', 'X-Master-Key': MASTER_KEY, 'X-Bin-Versioning': 'false' }, 
