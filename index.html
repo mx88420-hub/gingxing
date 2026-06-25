@@ -6,7 +6,7 @@
     <title>早睡早起身體好 - 雲端多用戶照片版</title>
     <style>
         :root {
-            --bg-color: #F6F8FA; 
+            --bg-color: #F6F8FA;
             --card-bg: #FFFFFF;
             --primary-pink: #FFB7B2; 
             --primary-blue: #B5E2FA; 
@@ -139,7 +139,7 @@
             max-width: 1000px;
             width: 100%;
             flex-wrap: wrap;
-            display: none; 
+            display: none;
         }
 
         .left-panel, .right-panel {
@@ -330,7 +330,7 @@
         
         <div id="admin-user-selector-box">
             <label>👑 管理員專用：請選擇要查看的用戶資料</label>
-            <select id="admin-select-user" onchange="adminSwitchUserView()"></select>
+            <select id="admin-select-user" onchange="adminSwitchUserView(false)"></select>
         </div>
 
         <div class="tag-title">早睡早起身體好</div>
@@ -377,24 +377,56 @@
 
 <script>
     var GLOBAL_REG_BIN = '6a3b7243f5f4af5e29272dc4'; 
-    var MASTER_KEY = '$2a$10$hI.UbvJsfQa.7SxfrbZQE./.4pB/55flm6kq88Vuwgt/3IzyMB5ii'; 
+    var MASTER_KEY = '$2a$10$hI.UbvJsfQa.7SxfrbZQE./.4pB/55flm6kq88Vuwgt/3IzyMB5ii';
     var ORIGINAL_BIN = '65ab19e51f5677613ba2a488'; 
 
     var HARDCODED_USERS = {
         'ginggingxing': { pass: '0979365961', isAdmin: true, binId: ORIGINAL_BIN },
         'popoman': { pass: '0926682683', isAdmin: false, binId: ORIGINAL_BIN }
     };
-
     var isRegisterMode = false;
     var currentUser = "";
     var targetUserBinId = ""; 
     var currentViewingUser = ""; 
-    var globalUsersDatabase = {}; 
+    var globalUsersDatabase = {};
     var appData = {}; 
     var currentDate = new Date(); 
     var selectedDateStr = ""; 
     var syncIntervalId = null;
     var base64ImageStr = ""; 
+
+    // ✨ 網頁載入時自動檢查 LocalStorage 狀態，實現重新整理不登出
+    window.onload = function() {
+        var savedUser = localStorage.getItem('health_user');
+        var savedBinId = localStorage.getItem('health_binId');
+        var savedViewingUser = localStorage.getItem('health_viewUser');
+        
+        if (savedUser && savedBinId) {
+            currentUser = savedUser;
+            targetUserBinId = savedBinId;
+            currentViewingUser = savedViewingUser || savedUser;
+            
+            document.getElementById('login-overlay').style.display = 'none';
+            document.getElementById('main-system').style.display = 'flex';
+            
+            if(HARDCODED_USERS[currentUser] && HARDCODED_USERS[currentUser].isAdmin) {
+                document.getElementById('user-display').innerText = "👑 管理員：" + currentUser;
+                // 讀取全域註冊庫名單以建立管理員下拉選單
+                fetch('https://api.jsonbin.io/v3/b/' + GLOBAL_REG_BIN + '/latest', {
+                    method: 'GET', headers: { 'X-Master-Key': MASTER_KEY }
+                }).then(function(r){ return r.json(); }).then(function(d){ 
+                    globalUsersDatabase = d.record || {};
+                    setupAdminConsole();
+                    document.getElementById('admin-select-user').value = currentViewingUser;
+                    adminSwitchUserView(true); // 帶入 true 代表網頁初始觸發，此時不重複觸發多餘的 pull 請求
+                }).catch(function(e){ console.log("名單載入延遲", e); });
+            } else {
+                document.getElementById('user-display').innerText = "👤 使用者：" + currentUser;
+                document.getElementById('admin-user-selector-box').style.display = 'none';
+            }
+            initSystem();
+        }
+    };
 
     function toggleAuthMode() {
         isRegisterMode = !isRegisterMode;
@@ -403,7 +435,6 @@
         var btn = document.getElementById('btn-main-submit');
         var switchBtn = document.getElementById('switch-mode-btn');
         document.getElementById('login-error').style.display = 'none';
-
         if(isRegisterMode) {
             tag.innerText = "📝 新增用戶註冊";
             title.innerText = "建立全新專屬個人日記箱";
@@ -441,7 +472,6 @@
             var submitBtn = document.getElementById('btn-main-submit');
             
             errorMsg.style.display = 'none';
-
             if(!userIn || !passIn) {
                 showError("❌ 請填寫帳號及密碼！");
                 return;
@@ -463,9 +493,13 @@
                     currentViewingUser = userIn;
                     targetUserBinId = HARDCODED_USERS[userIn].binId;
                     
+                    // 寫入快取
+                    localStorage.setItem('health_user', currentUser);
+                    localStorage.setItem('health_binId', targetUserBinId);
+                    localStorage.setItem('health_viewUser', currentViewingUser);
+
                     document.getElementById('login-overlay').style.display = 'none';
                     document.getElementById('main-system').style.display = 'flex';
-                    
                     if(HARDCODED_USERS[userIn].isAdmin) {
                         document.getElementById('user-display').innerText = "👑 管理員：" + currentUser;
                         setupAdminConsole(); 
@@ -487,7 +521,6 @@
                             if(HARDCODED_USERS[currentUser] && HARDCODED_USERS[currentUser].isAdmin) setupAdminConsole();
                         }).catch(function(e){ console.log("背景名單載入延遲", e); });
                     }, 100);
-
                     restoreButton();
                     return;
                 } else {
@@ -533,7 +566,7 @@
                         var allocatedBinId = newBinData.metadata.id;
                         globalUsersDatabase[userIn] = { password: passIn, binId: allocatedBinId };
                         
-                        return fetch('https://api.jsonbin.io/v3/b/' + GLOBAL_REG_BIN, {
+                        return fetch('https://api.jsonbin.io/v3/b/' + GLOBAL_REG_BIN + '/latest', {
                             method: 'PUT',
                             headers: { 'Content-Type': 'application/json', 'X-Master-Key': MASTER_KEY },
                             body: JSON.stringify(globalUsersDatabase)
@@ -555,6 +588,11 @@
                         currentViewingUser = userIn;
                         targetUserBinId = globalUsersDatabase[userIn].binId;
 
+                        // 寫入快取
+                        localStorage.setItem('health_user', currentUser);
+                        localStorage.setItem('health_binId', targetUserBinId);
+                        localStorage.setItem('health_viewUser', currentViewingUser);
+
                         document.getElementById('login-overlay').style.display = 'none';
                         document.getElementById('main-system').style.display = 'flex';
                         document.getElementById('user-display').innerText = "👤 使用者：" + currentUser;
@@ -575,7 +613,6 @@
                 showError("❌ 連線異常：" + err.message); 
                 restoreButton();
             });
-
         } catch (e) {
             showError("⚠️ 發生本機錯誤：" + e.message);
             document.getElementById('btn-main-submit').innerText = "登入";
@@ -590,7 +627,6 @@
         
         selector.innerHTML = "";
         box.style.display = 'block';
-
         Object.keys(HARDCODED_USERS).forEach(function(user) {
             var opt = document.createElement('option');
             opt.value = user;
@@ -598,7 +634,6 @@
             if(user === currentUser) opt.selected = true;
             selector.appendChild(opt);
         });
-
         Object.keys(globalUsersDatabase).forEach(function(user) {
             if(!HARDCODED_USERS[user]) {
                 var opt = document.createElement('option');
@@ -609,9 +644,10 @@
         });
     }
 
-    function adminSwitchUserView() {
+    function adminSwitchUserView(isInit) {
         var selectedUser = document.getElementById('admin-select-user').value;
         currentViewingUser = selectedUser;
+        localStorage.setItem('health_viewUser', currentViewingUser);
         
         if(HARDCODED_USERS[selectedUser]) {
             targetUserBinId = HARDCODED_USERS[selectedUser].binId;
@@ -631,11 +667,14 @@
             document.getElementById('note-input').readOnly = false;
         }
 
-        pullDataFromCloud();
+        if(!isInit) {
+            pullDataFromCloud();
+        }
     }
 
     function performLogout() {
         currentUser = ""; currentViewingUser = ""; targetUserBinId = "";
+        localStorage.clear(); // 清除本機登入快取
         if (syncIntervalId) clearInterval(syncIntervalId);
         document.getElementById('main-system').style.display = 'none';
         document.getElementById('login-overlay').style.display = 'flex';
@@ -660,7 +699,6 @@
         "⏰ 超過半夜兩點就不乖囉，身體在抗議了，快快去充電！",
         "🌟 睡飽飽，沒煩惱！把今天的不開心都交給夢境融化吧。"
     ];
-
     function formatDateKey(date) {
         var y = date.getFullYear();
         var m = String(date.getMonth() + 1).padStart(2, '0');
@@ -689,6 +727,14 @@
         if(sloganEl) sloganEl.innerText = slogans[randomIndex];
     }
 
+    // ⚡ 核心機制輔助：建立或取得目前看的人的資料夾分流 (User Namespace)，避免直接全面覆蓋
+    function getUserDataNode(userKey) {
+        if(!appData[userKey]) {
+            appData[userKey] = {};
+        }
+        return appData[userKey];
+    }
+
     function processAndPreviewImage(input) {
         if (input.files && input.files[0]) {
             var reader = new FileReader();
@@ -700,7 +746,6 @@
                     var max_size = 400; 
                     var width = img.width;
                     var height = img.height;
-
                     if (width > height) {
                         if (width > max_size) { height *= max_size / width; width = max_size; }
                     } else {
@@ -727,7 +772,6 @@
         if (!targetUserBinId) return;
         var syncStatusEl = document.getElementById('sync-status');
         if(syncStatusEl) syncStatusEl.innerText = "⏳ 讀取 [" + currentViewingUser + "] 的獨立雲端盒...";
-        
         fetch('https://api.jsonbin.io/v3/b/' + targetUserBinId + '/latest', {
             method: 'GET', headers: { 'X-Master-Key': MASTER_KEY }
         })
@@ -763,13 +807,14 @@
         var hour = String(now.getHours()).padStart(2, '0');
         var minute = String(now.getMinutes()).padStart(2, '0');
         var currentHour = now.getHours();
-
         var statusSymbol = ""; var statusText = ""; var statusClass = "";
         if (currentHour >= 2 && currentHour < 12) {
-            statusSymbol = "👹 壞寶寶"; statusClass = "bad-baby";
+            statusSymbol = "👹 壞寶寶";
+            statusClass = "bad-baby";
             statusText = "你在 " + hour + ":" + minute + " 打卡。稍微晚睡或晚起囉！";
         } else {
-            statusSymbol = "🌟 乖寶寶"; statusClass = "good-baby";
+            statusSymbol = "🌟 乖寶寶";
+            statusClass = "good-baby";
             statusText = "你在 " + hour + ":" + minute + " 打卡！時間維持得很棒！";
         }
 
@@ -780,8 +825,10 @@
             resultBox.style.display = 'block';
         }
 
-        if (!appData[todayStr]) appData[todayStr] = {};
-        appData[todayStr].punch = statusSymbol + " (" + hour + ":" + minute + ")";
+        // 🛡️ 修正：將打卡寫入到各自對應的使用者空間
+        var userNode = getUserDataNode(currentUser);
+        if (!userNode[todayStr]) userNode[todayStr] = {};
+        userNode[todayStr].punch = statusSymbol + " (" + hour + ":" + minute + ")";
         
         pushDataToCloud();
         renderCalendar();
@@ -797,32 +844,30 @@
         
         var year = currentDate.getFullYear(); var month = currentDate.getMonth();
         monthYearTitle.innerText = year + "年 " + (month + 1) + "月";
-        
         var weekdays = ['日', '一', '二', '三', '四', '五', '六'];
         weekdays.forEach(function(w) {
             var div = document.createElement('div'); div.className = 'weekday'; div.innerText = w; grid.appendChild(div);
         });
-        
         var firstDayIndex = new Date(year, month, 1).getDay();
         var totalDays = new Date(year, month + 1, 0).getDate();
         for (var i = 0; i < firstDayIndex; i++) grid.appendChild(document.createElement('div'));
         
         var todayStr = formatDateKey(new Date());
+        // 🛡️ 修正：月曆渲染讀取當前正在看的使用者的獨立分流
+        var userNode = getUserDataNode(currentViewingUser);
+        
         for (var d = 1; d <= totalDays; d++) {
             var dayDiv = document.createElement('div');
             dayDiv.className = 'day';
             var loopDateStr = year + '-' + String(month + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
-            
             if (loopDateStr === todayStr) dayDiv.classList.add('today');
             if (loopDateStr === selectedDateStr) dayDiv.classList.add('current-selected');
             
             dayDiv.innerHTML = "<div>" + d + "</div>";
-            
-            if (appData[loopDateStr]) {
+            if (userNode[loopDateStr]) {
                 var indicators = "";
-                if (appData[loopDateStr].punch) indicators += appData[loopDateStr].punch.split(' ')[0];
-                if (appData[loopDateStr].image) indicators += " 🍳"; 
-                
+                if (userNode[loopDateStr].punch) indicators += userNode[loopDateStr].punch.split(' ')[0];
+                if (userNode[loopDateStr].image) indicators += " 🍳";
                 if(indicators !== "") {
                     var statusDiv = document.createElement('div');
                     statusDiv.className = 'day-status';
@@ -834,7 +879,6 @@
             (function(ds) {
                 dayDiv.onclick = function() { selectDay(ds); };
             })(loopDateStr);
-
             grid.appendChild(dayDiv);
         }
     }
@@ -852,13 +896,16 @@
         var titleEl = document.getElementById('editor-date-title');
         if(titleEl) titleEl.innerText = "📅 觀看/編輯 " + parseInt(m, 10) + "月" + parseInt(d, 10) + "日 的日常紀錄";
         
+        // 🛡️ 修正：讀取當前正在查看的使用者紀錄
+        var userNode = getUserDataNode(currentViewingUser);
         var historyZone = document.getElementById('day-punch-history');
         if(historyZone) {
-            if (appData[dateStr] && appData[dateStr].punch) {
-                historyZone.innerText = "當日打卡：" + appData[dateStr].punch;
-                historyZone.style.color = appData[dateStr].punch.indexOf("乖") > -1 ? "#2E7D32" : "#C62828";
+            if (userNode[dateStr] && userNode[dateStr].punch) {
+                historyZone.innerText = "當日打卡：" + userNode[dateStr].punch;
+                historyZone.style.color = userNode[dateStr].punch.indexOf("乖") > -1 ? "#2E7D32" : "#C62828";
             } else {
-                historyZone.innerText = "當日無打卡紀錄"; historyZone.style.color = "#666";
+                historyZone.innerText = "當日無打卡紀錄";
+                historyZone.style.color = "#666";
             }
         }
         
@@ -866,8 +913,8 @@
         var placeholderText = document.getElementById('photo-placeholder-text');
         
         if(imgEl && placeholderText) {
-            if (appData[dateStr] && appData[dateStr].image) {
-                base64ImageStr = appData[dateStr].image;
+            if (userNode[dateStr] && userNode[dateStr].image) {
+                base64ImageStr = userNode[dateStr].image;
                 imgEl.src = base64ImageStr;
                 imgEl.style.display = 'block';
                 placeholderText.style.display = 'none';
@@ -880,17 +927,19 @@
         }
 
         var noteIn = document.getElementById('note-input');
-        if(noteIn) noteIn.value = (appData[dateStr] && appData[dateStr].note) ? appData[dateStr].note : "";
+        if(noteIn) noteIn.value = (userNode[dateStr] && userNode[dateStr].note) ? userNode[dateStr].note : "";
         var fileIn = document.getElementById('photo-file-input');
-        if(fileIn) fileIn.value = ""; 
+        if(fileIn) fileIn.value = "";
     }
 
     function saveDailyNote() {
         var text = document.getElementById('note-input').value.trim();
-        if (!appData[selectedDateStr]) appData[selectedDateStr] = {};
+        // 🛡️ 修正：永遠寫入目前自己（操作者）的帳號節點中，不會蓋到別人
+        var userNode = getUserDataNode(currentUser);
+        if (!userNode[selectedDateStr]) userNode[selectedDateStr] = {};
         
-        appData[selectedDateStr].note = text;
-        appData[selectedDateStr].image = base64ImageStr; 
+        userNode[selectedDateStr].note = text;
+        userNode[selectedDateStr].image = base64ImageStr; 
         
         pushDataToCloud();
         renderCalendar(); 
