@@ -273,6 +273,7 @@
         .editor-title { font-size: 15px; font-weight: bold; margin-bottom: 10px; color: #7A869A; }
         
         textarea { width: 100%; height: 90px; border: 1px solid #DDD; border-radius: 10px; padding: 10px; box-sizing: border-box; resize: none; font-family: inherit; margin-bottom: 10px; }
+        textarea:disabled { background-color: #F5F5F5; cursor: not-allowed; }
         .save-btn { background-color: var(--primary-purple); padding: 8px 20px; font-size: 14px; float: right; }
         .save-btn:disabled { background-color: #CCCCCC !important; color: #666666 !important; cursor: not-allowed; }
         .clear { clear: both; }
@@ -364,7 +365,7 @@
             <div class="editor-title" id="editor-date-title">選擇日期來記錄生活吧！</div>
             <div id="day-punch-history" style="font-size: 13px; color: #666; margin-bottom: 8px; font-weight: bold;"></div>
             
-            <textarea id="note-input" placeholder="今天有什麼想分享的心情..."></textarea>
+            <textarea id="note-input" placeholder="今天有什麼想分享的心情..." disabled></textarea>
             <button id="save-note-btn-el" class="btn save-btn" disabled onclick="saveDailyNote()">儲存今日心情</button>
             <div class="clear"></div>
         </div>
@@ -388,12 +389,20 @@
     var currentDate = new Date(); 
     var selectedDateStr = ""; 
     var syncIntervalId = null;
-    var isDataLoaded = false; // ✨ 安全鎖：確保雲端下載完成前無法點擊任何儲存按鈕
+    var isDataLoaded = false; // ✨ 安全鎖：確保雲端下載完成前，完全鎖定介面
 
     window.onload = function() {
         var savedUser = localStorage.getItem('health_user');
         var savedBinId = localStorage.getItem('health_binId');
         var savedViewingUser = localStorage.getItem('health_viewUser');
+        var needForceReload = localStorage.getItem('health_force_reload');
+        
+        // 🌟 核心修正：如果是剛登入，執行乾淨的強制重新整理來對齊雲端電路
+        if (needForceReload === "true") {
+            localStorage.removeItem('health_force_reload');
+            window.location.reload();
+            return;
+        }
         
         if (savedUser && savedBinId) {
             currentUser = savedUser;
@@ -402,6 +411,9 @@
             
             document.getElementById('login-overlay').style.display = 'none';
             document.getElementById('main-system').style.display = 'flex';
+            
+            lockInterfaceForLoading(); // 載入前先鎖定所有按鈕
+
             if(HARDCODED_USERS[currentUser] && HARDCODED_USERS[currentUser].isAdmin) {
                 document.getElementById('user-display').innerText = "👑 管理員：" + currentUser;
                 fetch('https://api.jsonbin.io/v3/b/' + GLOBAL_REG_BIN + '/latest', {
@@ -431,6 +443,14 @@
             }
         }
     };
+
+    function lockInterfaceForLoading() {
+        isDataLoaded = false;
+        document.getElementById('punch-btn-element').disabled = true;
+        document.getElementById('punch-btn-element').innerText = "⏳ 正在同步雲端資料...";
+        document.getElementById('save-note-btn-el').disabled = true;
+        document.getElementById('note-input').disabled = true;
+    }
 
     function toggleAuthMode() {
         isRegisterMode = !isRegisterMode;
@@ -476,6 +496,7 @@
                 localStorage.setItem('health_user', userIn);
                 localStorage.setItem('health_binId', HARDCODED_USERS[userIn].binId);
                 localStorage.setItem('health_viewUser', userIn);
+                localStorage.setItem('health_force_reload', "true"); // 標記需要重載
                 window.location.reload(); 
                 return;
             } else { showError("❌ 密碼不正確！"); restoreButton(); return; }
@@ -511,6 +532,7 @@
                     localStorage.setItem('health_user', userIn);
                     localStorage.setItem('health_binId', globalUsersDatabase[userIn].binId);
                     localStorage.setItem('health_viewUser', userIn);
+                    localStorage.setItem('health_force_reload', "true"); // 標記需要重載
                     window.location.reload();
                 } else { showError("❌ 帳號或密碼不正確！"); restoreButton(); }
             }
@@ -553,6 +575,7 @@
         var noteIn = document.getElementById('note-input');
         if(noteIn) noteIn.value = "";
 
+        lockInterfaceForLoading(); // 切換用戶時，重新鎖定按鈕直到載入完畢
         initSystem();
     }
 
@@ -560,6 +583,7 @@
         localStorage.removeItem('health_user');
         localStorage.removeItem('health_binId');
         localStorage.removeItem('health_viewUser');
+        localStorage.removeItem('health_force_reload');
         if (syncIntervalId) clearInterval(syncIntervalId);
         window.location.reload();
     }
@@ -572,7 +596,7 @@
                 var syncStatusEl = document.getElementById('sync-status');
                 if(syncStatusEl) syncStatusEl.innerText = "⏳ 正在雲端徹底銷毀紀錄...";
                 
-                appData = { greeting: "Reset Clean" }; // 歸零資料庫
+                appData = { greeting: "Reset Clean" }; 
                 
                 fetch('https://api.jsonbin.io/v3/b/' + targetUserBinId, {
                     method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Master-Key': MASTER_KEY },
@@ -593,11 +617,6 @@
     }
 
     function initSystem() {
-        isDataLoaded = false; // 開始重新載入，鎖定按鈕
-        document.getElementById('punch-btn-element').disabled = true;
-        document.getElementById('punch-btn-element').innerText = "⏳ 正在同步雲端資料...";
-        document.getElementById('save-note-btn-el').disabled = true;
-
         if(window.clockIntervalId) clearInterval(window.clockIntervalId);
         updateClock();
         window.clockIntervalId = setInterval(updateClock, 1000);
@@ -648,13 +667,14 @@
         .then(function(res) { return res.json(); })
         .then(function(data) {
             appData = data.record || {};
-            isDataLoaded = true; // ✨ 雲端下載完畢，解鎖安全限制
+            isDataLoaded = true; // ✨ 雲端下載完畢，解除安全鎖
 
             // 依據目前檢視權限與加載狀態控制按鈕
             if(currentViewingUser !== currentUser) {
                 document.getElementById('punch-btn-element').style.display = 'none';
                 document.getElementById('save-note-btn-el').style.display = 'none';
                 document.getElementById('note-input').readOnly = true;
+                document.getElementById('note-input').disabled = false;
             } else {
                 document.getElementById('punch-btn-element').style.display = 'block';
                 document.getElementById('punch-btn-element').disabled = false;
@@ -662,6 +682,7 @@
                 document.getElementById('save-note-btn-el').style.display = 'block';
                 document.getElementById('save-note-btn-el').disabled = false;
                 document.getElementById('note-input').readOnly = false;
+                document.getElementById('note-input').disabled = false;
             }
 
             renderCalendar();
