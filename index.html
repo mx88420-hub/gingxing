@@ -5,94 +5,92 @@
     <title>早睡早起健康平台</title>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #F0F2F5; padding: 20px; }
-        .page { max-width: 900px; margin: auto; display: none; }
-        .auth-container { max-width: 400px; margin: 100px auto; background: white; padding: 40px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); text-align: center; }
+        .container { max-width: 900px; margin: auto; display: grid; grid-template-columns: 250px 1fr 250px; gap: 20px; }
         .panel { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        .btn { width: 100%; padding: 12px; background: #6C63FF; border: none; border-radius: 8px; color: white; cursor: pointer; margin-top: 10px; }
-        input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
+        .btn { width: 100%; padding: 12px; border: none; border-radius: 8px; color: white; cursor: pointer; margin-top: 10px; }
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; margin-top: 15px; }
+        .day { aspect-ratio: 1; border: 1px solid #eee; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 10px; border-radius: 5px; }
+        .status-乖寶寶 { background: #C8E6C9; color: #2e7d32; }
+        .status-壞寶寶 { background: #FFCDD2; color: #c62828; }
     </style>
 </head>
 <body>
 
-<div id="auth-page" class="auth-container">
-    <h2>平台登入</h2>
-    <input type="text" id="username" placeholder="帳號">
-    <input type="password" id="password" placeholder="密碼">
-    <button class="btn" onclick="login()">登入</button>
-</div>
+<div class="container">
+    <div class="panel">
+        <h3>個人資料</h3>
+        <p id="user-display"></p>
+        <button onclick="logout()">登出</button>
+        <hr>
+        <p id="motto" style="font-style: italic; color: #555;"></p>
+    </div>
 
-<div id="main-page" class="page">
-    <div style="display: grid; grid-template-columns: 250px 1fr 250px; gap: 20px;">
-        <div class="panel">
-            <h3>個人資料</h3>
-            <p id="user-display"></p>
-            <button onclick="logout()">登出</button>
-        </div>
-        <div class="panel">
-            <h3>日記與打卡</h3>
-            <button class="btn" onclick="punch()">睡覺打卡</button>
-            <textarea id="note" style="width:100%; height:80px; margin-top:10px;"></textarea>
-            <button class="btn" style="background:#FF8A65;" onclick="saveNote()">儲存心情</button>
-        </div>
-        <div class="panel">
-            <h3>公告</h3>
-            <div id="notice-board">請使用管理員帳號登入</div>
-            <div id="admin-notice-input" style="display:none; margin-top:20px;">
-                <textarea id="admin-notice" style="width:100%;"></textarea>
-                <button class="btn" onclick="postNotice()">發佈公告</button>
-            </div>
-        </div>
+    <div class="panel">
+        <h2 id="calendar-title">2026年 6月</h2>
+        <div id="calendar-grid" class="calendar-grid"></div>
+        <hr>
+        <h3>日記與打卡</h3>
+        <button class="btn" style="background:#6C63FF;" onclick="punch()">睡覺打卡</button>
+        <textarea id="note" style="width:100%; height:60px; box-sizing:border-box;" placeholder="記錄心情..."></textarea>
+        <button class="btn" style="background:#FF8A65;" onclick="saveNote()">儲存心情</button>
     </div>
 </div>
 
 <script>
-    // 【重要】請將下方網址替換為你「部署」後得到的 /exec 網址
+    // 【重要】請務必將此處替換為你「部署」後得到的 /exec 網址
     var GAS_URL = "填入你的部署網址"; 
 
-    async function login() {
-        let u = document.getElementById('username').value;
-        let p = document.getElementById('password').value;
-        let res = await fetch(GAS_URL, {
-            method: "POST",
-            body: JSON.stringify({ action: "login", username: u, password: p })
-        });
-        let data = await res.text();
-        if(data === "Login_Success") {
-            localStorage.setItem('current_user', u);
-            location.reload();
-        } else { alert("帳號或密碼錯誤"); }
-    }
+    const mottos = ["今天也要加油！", "為什麼生活這麼難...", "乖寶寶有好夢", "熬夜會變笨喔！"];
+    document.getElementById('motto').innerText = mottos[Math.floor(Math.random() * mottos.length)];
+
+    function logout() { localStorage.removeItem('current_user'); location.reload(); }
 
     async function punch() {
         let u = localStorage.getItem('current_user');
-        await fetch(GAS_URL, {
-            method: "POST",
-            body: JSON.stringify({ action: "punch", punch: "乖寶寶", user: u, date: new Date().toLocaleDateString() })
+        let res = await fetch(GAS_URL, { 
+            method: "POST", 
+            body: JSON.stringify({ action: "punch", user: u, date: new Date().getDate() }) 
         });
-        alert("打卡成功：乖寶寶");
+        let status = await res.text();
+        alert("打卡結果：" + status);
+        location.reload();
     }
 
     async function saveNote() {
         let u = localStorage.getItem('current_user');
         let note = document.getElementById('note').value;
-        await fetch(GAS_URL, {
-            method: "POST",
-            body: JSON.stringify({ action: "saveNote", note: note, user: u, date: new Date().toLocaleDateString() })
+        await fetch(GAS_URL, { 
+            method: "POST", 
+            body: JSON.stringify({ action: "saveNote", note: note, user: u, date: new Date().getDate() }) 
         });
         alert("心情已儲存");
+        location.reload();
     }
 
-    function logout() { localStorage.removeItem('current_user'); location.reload(); }
-
-    window.onload = function() {
-        let u = localStorage.getItem('current_user');
-        if(u) {
-            document.getElementById('auth-page').style.display = 'none';
-            document.getElementById('main-page').style.display = 'block';
-            document.getElementById('user-display').innerText = "使用者: " + u;
-            if(u === 'ging') document.getElementById('admin-notice-input').style.display = 'block';
+    async function loadData() {
+        // 設定用戶顯示
+        document.getElementById('user-display').innerText = "使用者: " + (localStorage.getItem('current_user') || "未登入");
+        
+        let res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "getData" }) });
+        let data = await res.json();
+        
+        let grid = document.getElementById('calendar-grid');
+        grid.innerHTML = ""; // 清空
+        for(let i=1; i<=30; i++) {
+            let div = document.createElement('div');
+            div.className = 'day'; div.innerText = i;
+            
+            // 找尋當天的資料
+            let record = data.find(row => row[2] == i); 
+            if(record) {
+                if(record[3]) div.classList.add('status-' + record[3]); // 顯示顏色
+                if(record[4]) div.innerText += " (" + record[4].substring(0,2) + ")"; // 顯示日記摘要
+            }
+            grid.appendChild(div);
         }
     }
+    
+    window.onload = loadData;
 </script>
 </body>
 </html>
