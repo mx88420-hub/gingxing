@@ -2,91 +2,111 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>早睡早起健康生活平台</title>
+    <title>早睡早起健康平台</title>
     <style>
-        body { font-family: 'Noto Sans TC', sans-serif; background: #F6F8FA; display: flex; padding: 20px; gap: 20px; }
-        .panel { background: white; padding: 20px; border-radius: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.05); }
-        #col-1 { width: 200px; }
-        #col-2 { flex: 2; }
-        #col-3 { width: 250px; }
+        body { font-family: 'Segoe UI', 'Noto Sans TC', sans-serif; background: #F0F2F5; margin: 0; padding: 20px; }
+        .container { max-width: 900px; margin: auto; display: grid; grid-template-columns: 250px 1fr 250px; gap: 20px; }
+        .panel { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        
+        /* 登入遮罩樣式 */
+        #login-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; display: flex; align-items: center; justify-content: center; }
+        .login-box { background: white; padding: 30px; border-radius: 15px; text-align: center; width: 300px; }
+        .login-box input { width: 90%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 5px; }
+        
+        .btn { width: 100%; padding: 10px; background: #6C63FF; border: none; border-radius: 8px; color: white; cursor: pointer; font-weight: bold; margin-top: 10px; }
         .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; margin-top: 15px; }
-        .day { aspect-ratio: 1; border: 1px solid #eee; display: flex; align-items: center; justify-content: center; font-size: 12px; border-radius: 8px; }
-        .active { background: #E1BEE7; color: white; }
-        textarea { width: 100%; height: 80px; margin: 10px 0; border: 1px solid #ddd; border-radius: 10px; }
-        .btn { width: 100%; padding: 10px; background: #FFB7B2; border: none; border-radius: 10px; cursor: pointer; color: white; font-weight: bold; }
+        .day { aspect-ratio: 1; border: 1px solid #eee; display: flex; align-items: center; justify-content: center; font-size: 12px; }
     </style>
 </head>
 <body>
 
-<div id="col-1" class="panel">
-    <h3>個人資料</h3>
-    <p id="user-display">尚未登入</p>
-    <button onclick="logout()">登出</button>
+<div id="login-modal">
+    <div class="login-box">
+        <h2>請登入</h2>
+        <input type="text" id="username" placeholder="帳號">
+        <input type="password" id="password" placeholder="密碼">
+        <button class="btn" onclick="login()">進入系統</button>
+    </div>
 </div>
 
-<div id="col-2" class="panel">
-    <h2 id="calendar-title">2026年 6月</h2>
-    <div id="calendar-grid" class="calendar-grid"></div>
-    <hr>
-    <h3>日記與打卡</h3>
-    <button class="btn" onclick="punch()">睡覺打卡卡</button>
-    <textarea id="note" placeholder="記錄今日心情..."></textarea>
-    <button onclick="saveNote()">儲存心情</button>
-</div>
+<div class="container">
+    <div class="panel">
+        <h3>個人資料</h3>
+        <p id="user-display">尚未登入</p>
+        <button onclick="logout()">登出</button>
+    </div>
 
-<div id="col-3" class="panel">
-    <h3>管理員公告</h3>
-    <div id="notice-board">讀取中...</div>
-    <div id="admin-notice-input" style="display:none;">
-        <textarea id="admin-notice" placeholder="發佈新公告..."></textarea>
-        <button onclick="postNotice()">發佈公告</button>
+    <div class="panel">
+        <h2 id="calendar-title"></h2>
+        <div id="calendar-grid" class="calendar-grid"></div>
+        <hr>
+        <h3>日記與打卡</h3>
+        <button class="btn" onclick="punch()">睡覺打卡</button>
+        <textarea id="note" style="width:100%; height:80px; margin-top:10px;"></textarea>
+        <button class="btn" style="background:#FF8A65;" onclick="saveNote()">儲存心情</button>
+    </div>
+
+    <div class="panel">
+        <h3>管理員公告</h3>
+        <div id="notice-board">讀取中...</div>
+        <div id="admin-notice-input" style="display:none; margin-top:20px;">
+            <textarea id="admin-notice" style="width:100%;"></textarea>
+            <button class="btn" onclick="postNotice()">發佈公告</button>
+        </div>
     </div>
 </div>
 
 <script>
-    var GAS_URL = "https://script.google.com/macros/s/AKfycbwPBDQ2yN9gRM7T9rK-ScvlUc4fWFob5IugGGvzTSFUmDQ8LLE4lXWvl4cwCpk1KGwyfg/exec";
-    
-    // 初始化日曆顯示當前月份
+    var GAS_URL = "填入你的 Google Apps Script 網址"; // <--- 記得填入你的網址
+
+    function login() {
+        let u = document.getElementById('username').value;
+        let p = document.getElementById('password').value;
+        fetch(GAS_URL, {
+            method: "POST",
+            body: JSON.stringify({ action: "login", username: u, password: p })
+        })
+        .then(res => res.text())
+        .then(data => {
+            if(data === "Login_Success") {
+                localStorage.setItem('current_user', u);
+                location.reload();
+            } else { alert("帳號或密碼錯誤"); }
+        });
+    }
+
+    function logout() {
+        localStorage.removeItem('current_user');
+        location.reload();
+    }
+
     function renderCalendar() {
         let date = new Date();
         document.getElementById('calendar-title').innerText = date.getFullYear() + "年 " + (date.getMonth() + 1) + "月";
         let grid = document.getElementById('calendar-grid');
         for(let i=1; i<=30; i++) {
             let div = document.createElement('div');
-            div.className = 'day';
-            div.innerText = i;
+            div.className = 'day'; div.innerText = i;
             grid.appendChild(div);
         }
     }
 
-    // 儲存日記
     function saveNote() {
-        let note = document.getElementById('note').value;
         let u = localStorage.getItem('current_user');
-        // 同步到 Google Sheet
+        let note = document.getElementById('note').value;
         fetch(GAS_URL, {
-            method: "POST", mode: "no-cors",
-            body: JSON.stringify({ action: "saveNote", note: note, user: u })
-        });
-        alert("心情已儲存至雲端！");
+            method: "POST",
+            body: JSON.stringify({ action: "saveNote", note: note, user: u, date: new Date().toLocaleDateString() })
+        }).then(() => alert("已儲存！"));
     }
 
-    // 管理員發佈公告
-    function postNotice() {
-        let notice = document.getElementById('admin-notice').value;
-        fetch(GAS_URL, {
-            method: "POST", mode: "no-cors",
-            body: JSON.stringify({ action: "postNotice", notice: notice })
-        });
-        alert("公告已更新！");
-    }
-
-    // 初始化檢查是否為管理員
     window.onload = function() {
         renderCalendar();
         let u = localStorage.getItem('current_user');
-        if(u === 'ging') {
-            document.getElementById('admin-notice-input').style.display = 'block';
+        if(u) {
+            document.getElementById('login-modal').style.display = 'none';
+            document.getElementById('user-display').innerText = "使用者: " + u;
+            if(u === 'ging') document.getElementById('admin-notice-input').style.display = 'block';
         }
     }
 </script>
