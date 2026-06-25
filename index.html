@@ -132,7 +132,7 @@
         .main-layout {
             display: flex;
             gap: 25px;
-            max-width: 1100px;
+            max-width: 1150px;
             width: 100%;
             flex-wrap: wrap;
             display: none;
@@ -154,8 +154,8 @@
         }
 
         .right-panel {
-            flex: 1.5;
-            min-width: 400px;
+            flex: 1.6;
+            min-width: 420px;
             border: 4px solid var(--primary-blue);
         }
 
@@ -199,8 +199,8 @@
             padding: 10px;
             border-radius: 12px;
             margin-bottom: 15px;
-            text-align: left;
             display: none;
+            text-align: left;
         }
         #admin-user-selector-box label { font-size: 12px; font-weight: bold; color: #4682B4; }
         select { width: 100%; padding: 8px; margin-top: 5px; border-radius: 8px; border: 1px solid #CCC; }
@@ -223,10 +223,21 @@
         .good-baby { background-color: #E8F5E9; color: #2E7D32; border: 2px dashed #A5D6A7; }
         .bad-baby { background-color: #FFEBEE; color: #C62828; border: 2px dashed #EF9A9A; }
 
-        /* 📋 右側歷史打卡紀錄面板 */
+        /* 行事曆 */
+        .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .calendar-btn { background: var(--primary-blue); border: none; padding: 5px 12px; border-radius: 8px; cursor: pointer; font-weight: bold; color: #5D5D5D; }
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; text-align: center; }
+        .weekday { font-weight: bold; color: #A0A0A0; font-size: 13px; padding: 5px 0; }
+        .day { background-color: #F9F9F9; aspect-ratio: 1; border-radius: 10px; display: flex; flex-direction: column; justify-content: space-between; padding: 4px; font-size: 13px; cursor: pointer; border: 2px solid transparent; }
+        .day:hover { background-color: #E3F2FD; }
+        .day.current-selected { border: 2px solid var(--primary-purple); background-color: #F3E5F5; }
+        .day.today { background-color: var(--primary-blue); font-weight: bold; }
+        .day-status { font-size: 11px; margin-top: auto; font-weight: bold; text-align: center; }
+
+        /* 📋 右側面板：獨立歷史打卡時間紀錄區 */
         .history-list-box {
             margin-top: 20px;
-            background-color: #F8F9FA;
+            background-color: #FDFDFD;
             border: 2px dashed #CED4DA;
             border-radius: 16px;
             padding: 15px;
@@ -243,7 +254,7 @@
             justify-content: space-between;
         }
         .history-items-container {
-            max-height: 200px;
+            max-height: 180px;
             overflow-y: auto;
             font-size: 13px;
         }
@@ -255,17 +266,6 @@
             align-items: center;
         }
         .history-item:last-child { border-bottom: none; }
-
-        /* 行事曆 */
-        .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
-        .calendar-btn { background: var(--primary-blue); border: none; padding: 5px 12px; border-radius: 8px; cursor: pointer; font-weight: bold; color: #5D5D5D; }
-        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; text-align: center; }
-        .weekday { font-weight: bold; color: #A0A0A0; font-size: 13px; padding: 5px 0; }
-        .day { background-color: #F9F9F9; aspect-ratio: 1; border-radius: 10px; display: flex; flex-direction: column; justify-content: space-between; padding: 4px; font-size: 13px; cursor: pointer; border: 2px solid transparent; }
-        .day:hover { background-color: #E3F2FD; }
-        .day.current-selected { border: 2px solid var(--primary-purple); background-color: #F3E5F5; }
-        .day.today { background-color: var(--primary-blue); font-weight: bold; }
-        .day-status { font-size: 12px; margin-top: auto; font-weight: bold; }
 
         /* 📸 照片與日記編輯區 */
         .editor-section { margin-top: 20px; background: #FDFDFD; border: 2px dashed #E0E0E0; border-radius: 15px; padding: 15px; }
@@ -314,6 +314,17 @@
 </head>
 <body>
 
+<script>
+    window.onerror = function(message, source, lineno, colno, error) {
+        var errBox = document.getElementById('login-error');
+        if(errBox) {
+            errBox.style.display = 'block';
+            errBox.innerHTML = "⚠️ 系統異常提示：<br>" + message;
+        }
+        return true; 
+    };
+</script>
+
 <div id="login-overlay">
     <div class="login-box">
         <div class="tag-title" style="font-size: 14px; margin-bottom: 10px;" id="form-tag">🔐 安全登入系統</div>
@@ -346,7 +357,7 @@
         
         <div id="admin-user-selector-box">
             <label>👑 管理員專用：請選擇要查看的用戶資料</label>
-            <select id="admin-select-user" onchange="adminSwitchUserView(false)"></select>
+            <select id="admin-select-user" onchange="adminSwitchUserView()"></select>
         </div>
 
         <div class="tag-title">早睡早起身體好</div>
@@ -375,7 +386,7 @@
         <div class="history-list-box">
             <div class="history-list-title">
                 <span>📋 歷史打卡時間紀錄面板</span>
-                <span id="history-user-badge" style="font-size:12px; color:#007BFF; font-weight:bold;"></span>
+                <span id="history-user-badge" style="font-size:12px; color:#E1BEE7; font-weight:bold;">帳號: --</span>
             </div>
             <div class="history-items-container" id="history-items-list">
                 <div style="color:#aaa; text-align:center; padding-top:20px;">尚無歷史打卡資料</div>
@@ -421,41 +432,6 @@
     var syncIntervalId = null;
     var base64ImageStr = ""; 
 
-    window.onload = function() {
-        var savedUser = localStorage.getItem('health_user');
-        var savedBinId = localStorage.getItem('health_binId');
-        var savedViewingUser = localStorage.getItem('health_viewUser');
-        
-        if (savedUser && savedBinId) {
-            currentUser = savedUser;
-            targetUserBinId = savedBinId;
-            currentViewingUser = savedViewingUser || savedUser;
-            
-            // 預先加載快取防止空白
-            var cachedData = localStorage.getItem('health_cached_data_' + currentViewingUser);
-            if(cachedData) { appData = JSON.parse(cachedData); }
-
-            document.getElementById('login-overlay').style.display = 'none';
-            document.getElementById('main-system').style.display = 'flex';
-            
-            if(HARDCODED_USERS[currentUser] && HARDCODED_USERS[currentUser].isAdmin) {
-                document.getElementById('user-display').innerText = "👑 管理員：" + currentUser;
-                fetch('https://api.jsonbin.io/v3/b/' + GLOBAL_REG_BIN + '/latest', {
-                    method: 'GET', headers: { 'X-Master-Key': MASTER_KEY }
-                }).then(function(r){ return r.json(); }).then(function(d){ 
-                    globalUsersDatabase = d.record || {};
-                    setupAdminConsole();
-                    document.getElementById('admin-select-user').value = currentViewingUser;
-                    adminSwitchUserView(true); 
-                }).catch(function(e){ console.log(e); });
-            } else {
-                document.getElementById('user-display').innerText = "👤 使用者：" + currentUser;
-                document.getElementById('admin-user-selector-box').style.display = 'none';
-            }
-            initSystem();
-        }
-    };
-
     function toggleAuthMode() {
         isRegisterMode = !isRegisterMode;
         var tag = document.getElementById('form-tag');
@@ -482,70 +458,89 @@
     function showError(msg) { var errorMsg = document.getElementById('login-error'); if(errorMsg) { errorMsg.innerText = msg; errorMsg.style.display = 'block'; } }
 
     function handleFormSubmit() {
-        var userIn = document.getElementById('username').value.trim().toLowerCase();
-        var passIn = document.getElementById('password').value.trim();
-        var errorMsg = document.getElementById('login-error');
-        var submitBtn = document.getElementById('btn-main-submit');
-        
-        errorMsg.style.display = 'none';
-        if(!userIn || !passIn) { showError("❌ 請填寫帳號及密碼！"); return; }
+        try {
+            var userIn = document.getElementById('username').value.trim().toLowerCase();
+            var passIn = document.getElementById('password').value.trim();
+            var errorMsg = document.getElementById('login-error');
+            var submitBtn = document.getElementById('btn-main-submit');
+            
+            errorMsg.style.display = 'none';
+            if(!userIn || !passIn) { showError("❌ 請填寫帳號及密碼！"); return; }
 
-        submitBtn.disabled = true;
+            var originalText = isRegisterMode ? "確認註冊新帳號" : "登入";
+            submitBtn.innerText = "連線驗證中...";
+            submitBtn.disabled = true;
 
-        if(!isRegisterMode && HARDCODED_USERS[userIn]) {
-            if(HARDCODED_USERS[userIn].pass === passIn) {
-                currentUser = userIn; currentViewingUser = userIn; targetUserBinId = HARDCODED_USERS[userIn].binId;
-                localStorage.setItem('health_user', currentUser);
-                localStorage.setItem('health_binId', targetUserBinId);
-                localStorage.setItem('health_viewUser', currentViewingUser);
+            var restoreButton = function() { submitBtn.innerText = originalText; submitBtn.disabled = false; };
 
-                document.getElementById('login-overlay').style.display = 'none';
-                document.getElementById('main-system').style.display = 'flex';
-                if(HARDCODED_USERS[userIn].isAdmin) {
-                    document.getElementById('user-display').innerText = "👑 管理員：" + currentUser;
-                    setupAdminConsole(); 
-                } else {
-                    document.getElementById('user-display').innerText = "👤 使用者：" + currentUser;
-                    document.getElementById('admin-user-selector-box').style.display = 'none';
-                }
-                initSystem();
-                submitBtn.disabled = false;
-                return;
-            } else { showError("❌ 密碼不正確！"); submitBtn.disabled = false; return; }
-        }
-
-        fetch('https://api.jsonbin.io/v3/b/' + GLOBAL_REG_BIN + '/latest', { method: 'GET', headers: { 'X-Master-Key': MASTER_KEY } })
-        .then(function(res) { return res.json(); })
-        .then(function(data) {
-            globalUsersDatabase = data.record || {};
-            if(isRegisterMode) {
-                if(globalUsersDatabase[userIn] || HARDCODED_USERS[userIn]) { showError("❌ 帳號已被佔用！"); submitBtn.disabled = false; return; }
-                fetch('https://api.jsonbin.io/v3/b', {
-                    method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Master-Key': MASTER_KEY, 'X-Bin-Private': 'true' },
-                    body: JSON.stringify({ greeting: "Welcome!" })
-                })
-                .then(function(r) { return r.json(); })
-                .then(function(newBin) {
-                    globalUsersDatabase[userIn] = { password: passIn, binId: newBin.metadata.id };
-                    return fetch('https://api.jsonbin.io/v3/b/' + GLOBAL_REG_BIN, {
-                        method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Master-Key': MASTER_KEY },
-                        body: JSON.stringify(globalUsersDatabase)
-                    });
-                })
-                .then(function() { alert("🎉 註冊成功！"); toggleAuthMode(); submitBtn.disabled = false; });
-            } else {
-                if(globalUsersDatabase[userIn] && globalUsersDatabase[userIn].password === passIn) {
-                    currentUser = userIn; currentViewingUser = userIn; targetUserBinId = globalUsersDatabase[userIn].binId;
-                    localStorage.setItem('health_user', currentUser);
-                    localStorage.setItem('health_binId', targetUserBinId);
-                    localStorage.setItem('health_viewUser', currentViewingUser);
+            if(!isRegisterMode && HARDCODED_USERS[userIn]) {
+                if(HARDCODED_USERS[userIn].pass === passIn) {
+                    currentUser = userIn; currentViewingUser = userIn; targetUserBinId = HARDCODED_USERS[userIn].binId;
                     document.getElementById('login-overlay').style.display = 'none';
                     document.getElementById('main-system').style.display = 'flex';
-                    initSystem();
-                } else { showError("❌ 帳號或密碼錯誤！"); }
-                submitBtn.disabled = false;
+                    if(HARDCODED_USERS[userIn].isAdmin) {
+                        document.getElementById('user-display').innerText = "👑 管理員：" + currentUser;
+                        setupAdminConsole(); 
+                    } else {
+                        document.getElementById('user-display').innerText = "👤 使用者：" + currentUser;
+                        document.getElementById('admin-user-selector-box').style.display = 'none';
+                    }
+                    document.getElementById('username').value = "";
+                    document.getElementById('password').value = "";
+
+                    setTimeout(function() {
+                        initSystem();
+                        fetch('https://api.jsonbin.io/v3/b/' + GLOBAL_REG_BIN + '/latest', {
+                            method: 'GET', headers: { 'X-Master-Key': MASTER_KEY }
+                        }).then(function(r){ return r.json(); }).then(function(d){ 
+                            globalUsersDatabase = d.record || {};
+                            if(HARDCODED_USERS[currentUser] && HARDCODED_USERS[currentUser].isAdmin) setupAdminConsole();
+                        }).catch(function(e){ console.log(e); });
+                    }, 100);
+                    restoreButton();
+                    return;
+                } else { showError("❌ 密碼不正確！"); restoreButton(); return; }
             }
-        }).catch(function() { submitBtn.disabled = false; });
+
+            if(!/^[a-z0-9]+$/.test(userIn)) { showError("❌ 帳號僅能使用英文小寫與數字喔！"); restoreButton(); return; }
+
+            fetch('https://api.jsonbin.io/v3/b/' + GLOBAL_REG_BIN + '/latest', {
+                method: 'GET', headers: { 'X-Master-Key': MASTER_KEY }
+            })
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+                globalUsersDatabase = data.record || {};
+                if(isRegisterMode) {
+                    if(globalUsersDatabase[userIn] || HARDCODED_USERS[userIn]) { showError("❌ 該帳號已被佔用，請換一個名字！"); restoreButton(); return; }
+                    fetch('https://api.jsonbin.io/v3/b', {
+                        method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Master-Key': MASTER_KEY, 'X-Bin-Private': 'true' },
+                        body: JSON.stringify({ greeting: "Welcome!" })
+                    })
+                    .then(function(res) { return res.json(); })
+                    .then(function(newBinData) {
+                        globalUsersDatabase[userIn] = { password: passIn, binId: newBinData.metadata.id };
+                        return fetch('https://api.jsonbin.io/v3/b/' + GLOBAL_REG_BIN, {
+                            method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Master-Key': MASTER_KEY },
+                            body: JSON.stringify(globalUsersDatabase)
+                        });
+                    })
+                    .then(function() { alert("🎉 註冊成功！請直接登入！"); toggleAuthMode(); restoreButton(); })
+                    .catch(function() { showError("❌ 註冊通訊失敗。"); restoreButton(); });
+                } else {
+                    if(globalUsersDatabase[userIn] && globalUsersDatabase[userIn].password === passIn) {
+                        currentUser = userIn; currentViewingUser = userIn; targetUserBinId = globalUsersDatabase[userIn].binId;
+                        document.getElementById('login-overlay').style.display = 'none';
+                        document.getElementById('main-system').style.display = 'flex';
+                        document.getElementById('user-display').innerText = "👤 使用者：" + currentUser;
+                        document.getElementById('admin-user-selector-box').style.display = 'none';
+                        document.getElementById('username').value = "";
+                        document.getElementById('password').value = "";
+                        setTimeout(function() { initSystem(); }, 100);
+                    } else { showError("❌ 帳號或密碼不正確！"); }
+                    restoreButton();
+                }
+            }).catch(function(err) { showError("❌ 連線異常：" + err.message); restoreButton(); });
+        } catch (e) { restoreButton(); }
     }
 
     function setupAdminConsole() {
@@ -553,20 +548,24 @@
         var selector = document.getElementById('admin-select-user');
         if(!selector || !box) return;
         selector.innerHTML = ""; box.style.display = 'block';
-        Object.keys(HARDCODED_USERS).forEach(function(u) {
-            var opt = document.createElement('option'); opt.value = u; opt.innerText = "固定帳號：" + u; selector.appendChild(opt);
+        Object.keys(HARDCODED_USERS).forEach(function(user) {
+            var opt = document.createElement('option'); opt.value = user; opt.innerText = (user === currentUser) ? "自己 (" + user + ")" : "固定用戶：" + user;
+            if(user === currentUser) opt.selected = true;
+            selector.appendChild(opt);
         });
-        Object.keys(globalUsersDatabase).forEach(function(u) {
-            var opt = document.createElement('option'); opt.value = u; opt.innerText = "註冊帳號：" + u; selector.appendChild(opt);
+        Object.keys(globalUsersDatabase).forEach(function(user) {
+            if(!HARDCODED_USERS[user]) {
+                var opt = document.createElement('option'); opt.value = user; opt.innerText = "註冊用戶：" + user;
+                selector.appendChild(opt);
+            }
         });
     }
 
-    function adminSwitchUserView(isInit) {
+    function adminSwitchUserView() {
         var selectedUser = document.getElementById('admin-select-user').value;
         currentViewingUser = selectedUser;
-        localStorage.setItem('health_viewUser', currentViewingUser);
         
-        if(HARDCODED_USERS[selectedUser]) { targetUserBinId = HARDCODED_USERS[selectedUser].binId; }
+        if(HARDCODED_USERS[selectedUser]) { targetUserBinId = HARDCODED_USERS[selectedUser].binId; } 
         else { targetUserBinId = globalUsersDatabase[selectedUser].binId; }
         
         if(currentViewingUser !== currentUser) {
@@ -581,17 +580,26 @@
             document.getElementById('note-input').readOnly = false;
         }
 
-        var cachedData = localStorage.getItem('health_cached_data_' + currentViewingUser);
-        appData = cachedData ? JSON.parse(cachedData) : {};
+        // 切換時清除舊有的畫面快取，防錯亂
+        base64ImageStr = "";
+        var imgEl = document.getElementById('food-img-element');
+        if(imgEl) { imgEl.src = ""; imgEl.style.display = 'none'; }
+        var ph = document.getElementById('photo-placeholder-text');
+        if(ph) ph.style.display = 'block';
+        var noteIn = document.getElementById('note-input');
+        if(noteIn) noteIn.value = "";
 
-        renderCalendar();
-        renderRightHistoryList();
-        if(!isInit) { pullDataFromCloud(); }
+        pullDataFromCloud();
     }
 
     function performLogout() {
-        localStorage.clear(); if (syncIntervalId) clearInterval(syncIntervalId);
-        window.location.reload();
+        currentUser = ""; currentViewingUser = ""; targetUserBinId = "";
+        if (syncIntervalId) clearInterval(syncIntervalId);
+        document.getElementById('main-system').style.display = 'none';
+        document.getElementById('login-overlay').style.display = 'flex';
+        document.getElementById('username').value = "";
+        document.getElementById('password').value = "";
+        document.getElementById('result-display').style.display = 'none';
     }
 
     function initSystem() {
@@ -600,14 +608,16 @@
         window.clockIntervalId = setInterval(updateClock, 1000);
         selectedDateStr = formatDateKey(new Date());
         
-        renderCalendar();
-        renderRightHistoryList();
         pullDataFromCloud();
-        
         if (syncIntervalId) clearInterval(syncIntervalId);
         syncIntervalId = setInterval(pullDataFromCloud, 30000);
     }
 
+    var slogans = [
+        "❤️ 下午睡覺是為了補充滿滿元氣，晚上也要記得早點躺平喔！",
+        "⏰ 超過半夜兩點就不乖囉，身體在抗議了，快快去充電！",
+        "🌟 睡飽飽，沒煩惱！把今天的不開心都交給夢境融化吧。"
+    ];
     function formatDateKey(date) {
         var y = date.getFullYear();
         var m = String(date.getMonth() + 1).padStart(2, '0');
@@ -617,187 +627,231 @@
 
     function updateClock() {
         var now = new Date();
-        document.getElementById('live-date').innerText = now.getFullYear() + "年" + (now.getMonth() + 1) + "月" + now.getDate() + "日";
-        document.getElementById('clock-display').innerText = String(now.getHours()).padStart(2, '0') + ":" + String(now.getMinutes()).padStart(2, '0') + ":" + String(now.getSeconds()).padStart(2, '0');
+        var liveDateEl = document.getElementById('live-date');
+        if(liveDateEl) liveDateEl.innerText = now.getFullYear() + "年" + (now.getMonth() + 1) + "月" + now.getDate() + "日";
+        var hh = String(now.getHours()).padStart(2, '0');
+        var mm = String(now.getMinutes()).padStart(2, '0');
+        var ss = String(now.getSeconds()).padStart(2, '0');
+        var clockDisplayEl = document.getElementById('clock-display');
+        if(clockDisplayEl) clockDisplayEl.innerText = hh + ":" + mm + ":" + ss;
     }
 
-    function pullDataFromCloud() {
-        if (!targetUserBinId) return;
-        document.getElementById('sync-status').innerText = "⏳ 正在同步 [" + currentViewingUser + "] 的雲端盒...";
-        fetch('https://api.jsonbin.io/v3/b/' + targetUserBinId + '/latest', { method: 'GET', headers: { 'X-Master-Key': MASTER_KEY } })
-        .then(function(res) { return res.json(); })
-        .then(function(data) {
-            appData = data.record || {};
-            localStorage.setItem('health_cached_data_' + currentViewingUser, JSON.stringify(appData));
-            
-            renderCalendar();
-            renderRightHistoryList();
-            
-            // 安全觸發當日詳細檢視，避免 input.value 未渲染噴錯
-            try { selectDay(selectedDateStr); } catch(e){}
-            document.getElementById('sync-status').innerText = "✅ [" + currentViewingUser + "] 資料同步完成";
-        })
-        .catch(function() { document.getElementById('sync-status').innerText = "❌ 雲端同步異常"; });
-    }
-
-    function pushDataToCloud() {
-        if (!targetUserBinId) return;
-        localStorage.setItem('health_cached_data_' + currentViewingUser, JSON.stringify(appData));
-        fetch('https://api.jsonbin.io/v3/b/' + targetUserBinId, {
-            method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Master-Key': MASTER_KEY },
-            body: JSON.stringify(appData)
-        }).catch(function(e){ console.log(e); });
-    }
-
-    /* 📋 渲染右側歷史打卡紀錄 */
-    function renderRightHistoryList() {
-        var container = document.getElementById('history-items-list');
-        var badge = document.getElementById('history-user-badge');
-        if(!container) return;
-        
-        badge.innerText = "帳號: " + currentViewingUser;
-        container.innerHTML = "";
-
-        var dates = Object.keys(appData).filter(function(k) {
-            return k.match(/^\d{4}-\d{2}-\d{2}$/) && appData[k].punch;
-        }).sort().reverse();
-
-        if(dates.length === 0) {
-            container.innerHTML = '<div style="color:#aaa; text-align:center; padding-top:20px;">該帳號尚無歷史打卡資料</div>';
-            return;
-        }
-
-        dates.forEach(function(dStr) {
-            var punchVal = appData[dStr].punch;
-            var isGood = punchVal.indexOf("乖") > -1;
-            var color = isGood ? "#2E7D32" : "#C62828";
-            var div = document.createElement('div');
-            div.className = "history-item";
-            div.innerHTML = "<b style='color:#5A5A5A;'>" + dStr + "</b>" +
-                            "<span style='color:" + color + "; font-weight:bold;'>" + punchVal + "</span>";
-            container.appendChild(div);
-        });
-    }
-
-    function performPunchIn() {
-        var now = new Date();
-        var todayStr = formatDateKey(now);
-        var hour = String(now.getHours()).padStart(2, '0');
-        var minute = String(now.getMinutes()).padStart(2, '0');
-        var currentHour = now.getHours();
-        
-        var symbol = (currentHour >= 2 && currentHour < 12) ? "👹 壞寶寶" : "🌟 乖寶寶";
-        var statusClass = (currentHour >= 2 && currentHour < 12) ? "bad-baby" : "good-baby";
-        var txt = "你在 " + hour + ":" + minute + " 打卡成功！";
-
-        var resultBox = document.getElementById('result-display');
-        if(resultBox) {
-            resultBox.className = "result-box " + statusClass;
-            resultBox.innerHTML = "<div>" + symbol + "</div><div style='font-size:13px; font-weight:normal; margin-top:4px;'>" + txt + "</div>";
-            resultBox.style.display = 'block';
-        }
-
-        if (!appData[todayStr]) appData[todayStr] = {};
-        appData[todayStr].punch = symbol + " (" + hour + ":" + minute + ")";
-        
-        pushDataToCloud(); 
-        renderCalendar();
-        renderRightHistoryList();
-        try { selectDay(todayStr); } catch(e){}
-    }
-
-    function renderCalendar() {
-        var grid = document.getElementById('calendar-grid');
-        var title = document.getElementById('calendar-month-year');
-        if(!grid || !title) return;
-        grid.innerHTML = ''; 
-        
-        var year = currentDate.getFullYear(); var month = currentDate.getMonth();
-        title.innerText = year + "年 " + (month + 1) + "月";
-        
-        var weekdays = ['日', '一', '二', '三', '四', '五', '六'];
-        weekdays.forEach(function(w) { var div = document.createElement('div'); div.className = 'weekday'; div.innerText = w; grid.appendChild(div); });
-        
-        var firstDay = new Date(year, month, 1).getDay();
-        var totalDays = new Date(year, month + 1, 0).getDate();
-        for (var i = 0; i < firstDay; i++) grid.appendChild(document.createElement('div'));
-        
-        var todayStr = formatDateKey(new Date());
-        for (var d = 1; d <= totalDays; d++) {
-            var dayDiv = document.createElement('div'); dayDiv.className = 'day';
-            var loopDate = year + '-' + String(month + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
-            
-            if (loopDate === todayStr) dayDiv.classList.add('today');
-            if (loopDate === selectedDateStr) dayDiv.classList.add('current-selected');
-            
-            dayDiv.innerHTML = "<div>" + d + "</div>";
-            
-            if (appData[loopDate]) {
-                var stamps = "";
-                if (appData[loopDate].punch) stamps += appData[loopDate].punch.split(' ')[0];
-                if (appData[loopDate].image) stamps += " 🍳";
-                if(stamps !== "") {
-                    var sDiv = document.createElement('div'); sDiv.className = 'day-status'; sDiv.innerText = stamps;
-                    dayDiv.appendChild(sDiv);
-                }
-            }
-            
-            (function(ds) { dayDiv.onclick = function() { selectDay(ds); }; })(loopDate);
-            grid.appendChild(dayDiv);
-        }
-    }
-
-    function changeMonth(dir) { currentDate.setMonth(currentDate.getMonth() + dir); renderCalendar(); }
-
-    function selectDay(dateStr) {
-        selectedDateStr = dateStr;
-        document.querySelectorAll('.day').forEach(function(n) { n.classList.remove('current-selected'); });
-        var parts = dateStr.split('-');
-        var titleEl = document.getElementById('editor-date-title');
-        if(titleEl) titleEl.innerText = "📅 觀看/編輯 " + parseInt(parts[1], 10) + "月" + parseInt(parts[2], 10) + "日 的日常紀錄";
-        
-        var hz = document.getElementById('day-punch-history');
-        if(hz) {
-            if (appData[dateStr] && appData[dateStr].punch) {
-                hz.innerText = "當日打卡：" + appData[dateStr].punch;
-                hz.style.color = appData[dateStr].punch.indexOf("乖") > -1 ? "#2E7D32" : "#C62828";
-            } else { hz.innerText = "當日無打卡紀錄"; hz.style.color = "#666"; }
-        }
-        
-        var imgEl = document.getElementById('food-img-element');
-        var ph = document.getElementById('photo-placeholder-text');
-        if(imgEl && ph) {
-            if (appData[dateStr] && appData[dateStr].image) {
-                base64ImageStr = appData[dateStr].image; imgEl.src = base64ImageStr; imgEl.style.display = 'block'; ph.style.display = 'none';
-            } else { base64ImageStr = ""; imgEl.src = ""; imgEl.style.display = 'none'; ph.style.display = 'block'; }
-        }
-        var noteIn = document.getElementById('note-input');
-        if(noteIn) noteIn.value = (appData[dateStr] && appData[dateStr].note) ? appData[dateStr].note : "";
-        
-        // 安全清空 file input，避免未選取物件噴錯
-        var fileIn = document.getElementById('photo-file-input');
-        if(fileIn) { try { fileIn.value = ""; } catch(e){} }
+    function setRandomSlogan() {
+        var randomIndex = Math.floor(Math.random() * slogans.length);
+        var sloganEl = document.getElementById('slogan-display');
+        if(sloganEl) sloganEl.innerText = slogans[randomIndex];
     }
 
     function processAndPreviewImage(input) {
         if (input.files && input.files[0]) {
             var reader = new FileReader();
             reader.onload = function (e) {
-                var img = new Image(); img.src = e.target.result;
+                var img = new Image();
+                img.src = e.target.result;
                 img.onload = function () {
                     var canvas = document.createElement('canvas');
                     var max_size = 400; var width = img.width; var height = img.height;
-                    if (width > height) { if (width > max_size) { height *= max_size / width; width = max_size; } }
+                    if (width > height) { if (width > max_size) { height *= max_size / width; width = max_size; } } 
                     else { if (height > max_size) { width *= max_size / height; height = max_size; } }
                     canvas.width = width; canvas.height = height;
                     var ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, width, height);
-                    base64ImageStr = canvas.toDataURL('image/jpeg', 0.7);
+                    base64ImageStr = canvas.toDataURL('image/jpeg', 0.7); 
                     document.getElementById('photo-placeholder-text').style.display = 'none';
-                    var imgEl = document.getElementById('food-img-element'); imgEl.src = base64ImageStr; imgEl.style.display = 'block';
+                    var imgEl = document.getElementById('food-img-element');
+                    imgEl.src = base64ImageStr; imgEl.style.display = 'block';
                 }
             };
             reader.readAsDataURL(input.files[0]);
         }
+    }
+
+    function pullDataFromCloud() {
+        if (!targetUserBinId) return;
+        var syncStatusEl = document.getElementById('sync-status');
+        if(syncStatusEl) syncStatusEl.innerText = "⏳ 讀取 [" + currentViewingUser + "] 的獨立雲端盒...";
+        fetch('https://api.jsonbin.io/v3/b/' + targetUserBinId + '/latest', {
+            method: 'GET', headers: { 'X-Master-Key': MASTER_KEY }
+        })
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+            appData = data.record || {};
+            renderCalendar();
+            renderRightHistoryPanel(); // 刷新右側面板
+            selectDay(selectedDateStr);
+            if(syncStatusEl) syncStatusEl.innerText = "✅ 已即時同步 [" + currentViewingUser + "] 的紀錄";
+        })
+        .catch(function(err) { if(syncStatusEl) syncStatusEl.innerText = "❌ 雲端讀取異常"; });
+    }
+
+    function pushDataToCloud() {
+        if (!targetUserBinId) return;
+        fetch('https://api.jsonbin.io/v3/b/' + targetUserBinId, {
+            method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Master-Key': MASTER_KEY },
+            body: JSON.stringify(appData)
+        })
+        .then(function() {
+            var syncStatusEl = document.getElementById('sync-status');
+            if(syncStatusEl) syncStatusEl.innerText = "✅ 變更已安全儲存";
+        }).catch(function(err) { console.log(err); });
+    }
+
+    /* 📋 右側面板：重新渲染全帳號歷史打卡列表 */
+    function renderRightHistoryPanel() {
+        var container = document.getElementById('history-items-list');
+        var badge = document.getElementById('history-user-badge');
+        if(!container) return;
+        badge.innerText = "帳號: " + currentViewingUser;
+        container.innerHTML = "";
+
+        // 篩選出具備打卡紀錄的所有日期
+        var punchDates = Object.keys(appData).filter(function(key) {
+            return key.match(/^\d{4}-\d{2}-\d{2}$/) && appData[key].punch;
+        }).sort().reverse();
+
+        if (punchDates.length === 0) {
+            container.innerHTML = '<div style="color:#aaa; text-align:center; padding-top:20px;">該帳號尚無歷史打卡資料</div>';
+            return;
+        }
+
+        punchDates.forEach(function(dStr) {
+            var punchVal = appData[dStr].punch;
+            var isGood = punchVal.indexOf("乖") > -1;
+            var labelColor = isGood ? "#2E7D32" : "#C62828";
+            
+            var itemDiv = document.createElement('div');
+            itemDiv.className = "history-item";
+            itemDiv.innerHTML = "<b style='color:#5A5A5A;'>" + dStr + "</b>" +
+                                "<span style='color:" + labelColor + "; font-weight:bold;'>" + punchVal + "</span>";
+            container.appendChild(itemDiv);
+        });
+    }
+
+    function performPunchIn() {
+        var now = new Date();
+        var todayStr = formatDateKey(now);
+        
+        // 🔒 限制：一天只能打卡一次安全檢查
+        if (appData[todayStr] && appData[todayStr].punch) {
+            alert("⚠️ 今天已經打過卡囉！明天再繼續保持吧！");
+            return;
+        }
+
+        var hour = String(now.getHours()).padStart(2, '0');
+        var minute = String(now.getMinutes()).padStart(2, '0');
+        var currentHour = now.getHours();
+        var statusSymbol = ""; var statusText = ""; var statusClass = "";
+        
+        if (currentHour >= 2 && currentHour < 12) {
+            statusSymbol = "👹 壞寶寶"; statusClass = "bad-baby";
+            statusText = "你在 " + hour + ":" + minute + " 打卡。稍微晚睡或晚起囉！";
+        } else {
+            statusSymbol = "🌟 乖寶寶"; statusClass = "good-baby";
+            statusText = "你在 " + hour + ":" + minute + " 打卡！時間維持得很棒！";
+        }
+
+        var resultBox = document.getElementById('result-display');
+        if(resultBox) {
+            resultBox.className = "result-box " + statusClass;
+            resultBox.innerHTML = "<div>" + statusSymbol + "</div><div style='font-size:13px; font-weight:normal; margin-top:4px;'>" + statusText + "</div>";
+            resultBox.style.display = 'block';
+        }
+
+        if (!appData[todayStr]) appData[todayStr] = {};
+        appData[todayStr].punch = statusSymbol + " (" + hour + ":" + minute + ")";
+        
+        pushDataToCloud();
+        renderCalendar();
+        renderRightHistoryPanel(); // 同步更新右邊面板
+        selectDay(todayStr);
+        setRandomSlogan(); 
+    }
+
+    function renderCalendar() {
+        var grid = document.getElementById('calendar-grid');
+        var monthYearTitle = document.getElementById('calendar-month-year');
+        if(!grid || !monthYearTitle) return;
+        grid.innerHTML = ''; 
+        
+        var year = currentDate.getFullYear(); var month = currentDate.getMonth();
+        monthYearTitle.innerText = year + "年 " + (month + 1) + "月";
+        var weekdays = ['日', '一', '二', '三', '四', '五', '六'];
+        weekdays.forEach(function(w) {
+            var div = document.createElement('div'); div.className = 'weekday'; div.innerText = w; grid.appendChild(div);
+        });
+        var firstDayIndex = new Date(year, month, 1).getDay();
+        var totalDays = new Date(year, month + 1, 0).getDate();
+        for (var i = 0; i < firstDayIndex; i++) grid.appendChild(document.createElement('div'));
+        
+        var todayStr = formatDateKey(new Date());
+        for (var d = 1; d <= totalDays; d++) {
+            var dayDiv = document.createElement('div');
+            dayDiv.className = 'day';
+            var loopDateStr = year + '-' + String(month + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+            if (loopDateStr === todayStr) dayDiv.classList.add('today');
+            if (loopDateStr === selectedDateStr) dayDiv.classList.add('current-selected');
+            
+            dayDiv.innerHTML = "<div>" + d + "</div>";
+            if (appData[loopDateStr]) {
+                var indicators = "";
+                if (appData[loopDateStr].punch) indicators += appData[loopDateStr].punch.split(' ')[0];
+                if (appData[loopDateStr].image) indicators += " 🍳";
+                if(indicators !== "") {
+                    var statusDiv = document.createElement('div');
+                    statusDiv.className = 'day-status';
+                    statusDiv.innerText = indicators;
+                    dayDiv.appendChild(statusDiv);
+                }
+            }
+            
+            (function(ds) { dayDiv.onclick = function() { selectDay(ds); }; })(loopDateStr);
+            grid.appendChild(dayDiv);
+        }
+    }
+
+    function changeMonth(direction) {
+        currentDate.setMonth(currentDate.getMonth() + direction);
+        renderCalendar();
+    }
+
+    function selectDay(dateStr) {
+        selectedDateStr = dateStr;
+        document.querySelectorAll('.day').forEach(function(node) { node.classList.remove('current-selected'); });
+        
+        // 嘗試加入選取高亮樣式
+        var days = document.querySelectorAll('.day');
+        var parts = dateStr.split('-');
+        var titleEl = document.getElementById('editor-date-title');
+        if(titleEl) titleEl.innerText = "📅 觀看/編輯 " + parseInt(parts[1], 10) + "月" + parseInt(parts[2], 10) + "日 的日常紀錄";
+        
+        var historyZone = document.getElementById('day-punch-history');
+        if(historyZone) {
+            if (appData[dateStr] && appData[dateStr].punch) {
+                historyZone.innerText = "當日打卡：" + appData[dateStr].punch;
+                historyZone.style.color = appData[dateStr].punch.indexOf("乖") > -1 ? "#2E7D32" : "#C62828";
+            } else {
+                historyZone.innerText = "當日無打卡紀錄";
+                historyZone.style.color = "#666";
+            }
+        }
+        
+        var imgEl = document.getElementById('food-img-element');
+        var placeholderText = document.getElementById('photo-placeholder-text');
+        if(imgEl && placeholderText) {
+            if (appData[dateStr] && appData[dateStr].image) {
+                base64ImageStr = appData[dateStr].image;
+                imgEl.src = base64ImageStr; imgEl.style.display = 'block'; placeholderText.style.display = 'none';
+            } else {
+                base64ImageStr = "";
+                imgEl.src = ""; imgEl.style.display = 'none'; placeholderText.style.display = 'block';
+            }
+        }
+
+        var noteIn = document.getElementById('note-input');
+        if(noteIn) noteIn.value = (appData[dateStr] && appData[dateStr].note) ? appData[dateStr].note : "";
+        
+        // ✨ 安全防護：避免物件渲染前執行的噴錯
+        var fileIn = document.getElementById('photo-file-input');
+        if(fileIn) { try { fileIn.value = ""; } catch(e) {} }
     }
 
     function saveDailyNote() {
@@ -805,7 +859,9 @@
         if (!appData[selectedDateStr]) appData[selectedDateStr] = {};
         appData[selectedDateStr].note = text;
         appData[selectedDateStr].image = base64ImageStr; 
-        pushDataToCloud(); renderCalendar(); alert("今日美食與心情日記儲存成功囉！🌸");
+        pushDataToCloud();
+        renderCalendar(); 
+        alert("今日美食與心情日記儲存成功囉！🌸");
     }
 </script>
 </body>
