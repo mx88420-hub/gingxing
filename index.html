@@ -5,75 +5,68 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>早睡早起健康平台</title>
     <style>
-        body { font-family: 'Segoe UI', 'Noto Sans TC', sans-serif; background: #F0F2F5; margin: 0; padding: 20px; }
-        .container { max-width: 900px; margin: auto; display: grid; grid-template-columns: 250px 1fr 250px; gap: 20px; }
+        body { font-family: 'Segoe UI', sans-serif; background: #F0F2F5; margin: 0; padding: 20px; }
+        .page { max-width: 900px; margin: auto; display: none; } /* 預設隱藏主頁 */
+        .auth-container { max-width: 400px; margin: 100px auto; background: white; padding: 40px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); text-align: center; }
         .panel { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        
-        /* 登入遮罩 */
-        #login-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 1000; display: flex; align-items: center; justify-content: center; }
-        .login-box { background: white; padding: 30px; border-radius: 15px; text-align: center; width: 300px; }
-        .login-box input { width: 90%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 5px; }
-        
-        .btn { width: 100%; padding: 10px; background: #6C63FF; border: none; border-radius: 8px; color: white; cursor: pointer; font-weight: bold; margin-top: 10px; }
-        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; margin-top: 15px; }
-        .day { aspect-ratio: 1; border: 1px solid #eee; display: flex; align-items: center; justify-content: center; font-size: 12px; border-radius: 5px; }
+        .input-group { margin-bottom: 15px; text-align: left; }
+        input { width: 100%; padding: 12px; margin-top: 5px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
+        .btn { width: 100%; padding: 12px; background: #6C63FF; border: none; border-radius: 8px; color: white; cursor: pointer; font-weight: bold; margin-top: 10px; }
     </style>
 </head>
 <body>
 
-<div id="login-modal">
-    <div class="login-box">
-        <h2>登入系統</h2>
-        <input type="text" id="username" placeholder="帳號">
-        <input type="password" id="password" placeholder="密碼">
-        <button class="btn" onclick="login()">進入系統</button>
+<div id="auth-page" class="auth-container">
+    <h1>早睡早起平台</h1>
+    <div class="input-group">
+        <label>帳號</label>
+        <input type="text" id="username" placeholder="請輸入帳號">
     </div>
+    <div class="input-group">
+        <label>密碼</label>
+        <input type="password" id="password" placeholder="請輸入密碼">
+    </div>
+    <button class="btn" onclick="login()">登入 / 註冊</button>
 </div>
 
-<div class="container">
-    <div class="panel">
-        <h3>個人資料</h3>
-        <p id="user-display">尚未登入</p>
-        <button onclick="logout()">登出</button>
-    </div>
-
-    <div class="panel">
-        <h2 id="calendar-title"></h2>
-        <div id="calendar-grid" class="calendar-grid"></div>
-        <hr>
-        <h3>日記與打卡</h3>
-        <button class="btn" onclick="punch()">睡覺打卡</button>
-        <textarea id="note" style="width:100%; height:80px; margin-top:10px;" placeholder="記錄今日心情..."></textarea>
-        <button class="btn" style="background:#FF8A65;" onclick="saveNote()">儲存心情</button>
-    </div>
-
-    <div class="panel">
-        <h3>管理員公告</h3>
-        <div id="notice-board">讀取中...</div>
-        <div id="admin-notice-input" style="display:none; margin-top:20px;">
-            <textarea id="admin-notice" style="width:100%;" placeholder="發佈新公告..."></textarea>
-            <button class="btn" onclick="postNotice()">發佈公告</button>
+<div id="main-page" class="page">
+    <div style="display: grid; grid-template-columns: 250px 1fr 250px; gap: 20px;">
+        <div class="panel">
+            <h3>個人資料</h3>
+            <p id="user-display"></p>
+            <button onclick="logout()">登出</button>
+        </div>
+        <div class="panel">
+            <h2 id="calendar-title"></h2>
+            <div id="calendar-grid" style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px;"></div>
+            <hr>
+            <h3>日記與打卡</h3>
+            <button class="btn" onclick="punch()">睡覺打卡</button>
+            <textarea id="note" style="width:100%; height:80px; margin-top:10px;" placeholder="記錄今日心情..."></textarea>
+            <button class="btn" style="background:#FF8A65;" onclick="saveNote()">儲存心情</button>
+        </div>
+        <div class="panel">
+            <h3>公告</h3>
+            <div id="notice-board">讀取中...</div>
         </div>
     </div>
 </div>
 
 <script>
-    // 你的 GAS 連結已更新
     var GAS_URL = "https://script.google.com/macros/s/AKfycbw-ZoFwe2WXmGHywky7pmoKnmy0uci174IoCIwhEADQS8a9ZQaBwAwXEIji05TPfsGXCQ/exec";
 
     function login() {
         let u = document.getElementById('username').value;
         let p = document.getElementById('password').value;
-        fetch(GAS_URL, {
-            method: "POST",
-            mode: "no-cors",
-            body: JSON.stringify({ action: "login", username: u, password: p })
-        }).then(() => {
-            // 注意：因為 no-cors 模式無法讀取回傳值，
-            // 這裡假設驗證成功進入 (實際應用建議改成用 doGet 取得驗證結果)
-            localStorage.setItem('current_user', u);
-            location.reload();
-        });
+        // 實際開發中，這裡應該透過 GET 請求去驗證帳密是否存在
+        // 這裡暫時模擬登入成功並跳轉
+        localStorage.setItem('current_user', u);
+        showPage('main');
+    }
+
+    function showPage(page) {
+        document.getElementById('auth-page').style.display = (page === 'auth') ? 'block' : 'none';
+        document.getElementById('main-page').style.display = (page === 'main') ? 'block' : 'none';
     }
 
     function logout() {
@@ -81,43 +74,14 @@
         location.reload();
     }
 
-    function renderCalendar() {
-        let date = new Date();
-        document.getElementById('calendar-title').innerText = date.getFullYear() + "年 " + (date.getMonth() + 1) + "月";
-        let grid = document.getElementById('calendar-grid');
-        for(let i=1; i<=30; i++) {
-            let div = document.createElement('div');
-            div.className = 'day'; div.innerText = i;
-            grid.appendChild(div);
-        }
-    }
-
-    function saveNote() {
-        let u = localStorage.getItem('current_user');
-        let note = document.getElementById('note').value;
-        fetch(GAS_URL, {
-            method: "POST",
-            mode: "no-cors",
-            body: JSON.stringify({ action: "saveNote", note: note, user: u, date: new Date().toLocaleDateString() })
-        }).then(() => alert("已儲存！"));
-    }
-
-    function punch() {
-        let u = localStorage.getItem('current_user');
-        fetch(GAS_URL, {
-            method: "POST",
-            mode: "no-cors",
-            body: JSON.stringify({ action: "punch", punch: "已打卡", user: u, date: new Date().toLocaleDateString() })
-        }).then(() => alert("打卡成功！"));
-    }
-
     window.onload = function() {
-        renderCalendar();
         let u = localStorage.getItem('current_user');
         if(u) {
-            document.getElementById('login-modal').style.display = 'none';
+            showPage('main');
             document.getElementById('user-display').innerText = "使用者: " + u;
-            if(u === 'ging') document.getElementById('admin-notice-input').style.display = 'block';
+            // 這裡可以呼叫 renderCalendar() 等功能
+        } else {
+            showPage('auth');
         }
     }
 </script>
