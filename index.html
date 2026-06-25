@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>早睡早起身體好 - 純文字打卡雲端版</title>
+    <title>早睡早起身體好 - 雙重備份不消失版</title>
     <style>
         :root {
             --bg-color: #F6F8FA; --card-bg: #FFFFFF;
@@ -80,7 +80,7 @@
     <div class="left-panel">
         <div class="user-panel-top">
             <div id="user-display" style="font-weight: bold; color: var(--primary-purple);">目前登入：--</div>
-            <button class="btn-logout" onclick="performLogout()">🔒 登出</button>
+            <button class="btn-logout" onclick="performLogout()">🔒 登出 (不刪紀錄)</button>
         </div>
         
         <div id="admin-user-selector-box">
@@ -91,8 +91,8 @@
         <div class="tag-title">早睡早起身體好</div>
         <div class="clock" id="clock-display">00:00:00</div>
         
-        <button id="punch-btn-element" class="btn btn-punch" disabled onclick="performPunchIn()">⏳ 正在載入雲端資料...</button>
-        <div id="sync-status" class="loading-text">正在同步雲端...</div>
+        <button id="punch-btn-element" class="btn btn-punch" disabled onclick="performPunchIn()">⏳ 正在載入資料...</button>
+        <div id="sync-status" class="loading-text">正在讀取...</div>
         <div class="result-box" id="result-display"></div>
     </div>
     
@@ -209,55 +209,69 @@
         lockInterfaceForLoading(); appData = {}; initSystem();
     }
 
-    function performLogout() { localStorage.clear(); window.location.reload(); }
+    // 🚨 關鍵修復 1：登出時絕對不可以使用 localStorage.clear()！這會把辛辛苦苦存的紀錄都刪掉！
+    function performLogout() { 
+        localStorage.removeItem('health_user'); // 只移除登入帳號
+        localStorage.removeItem('health_binId'); // 只移除雲端鑰匙
+        window.location.reload(); 
+    }
 
     function initSystem() {
         if (clockInterval) clearInterval(clockInterval);
         clockInterval = setInterval(() => { var now = new Date(); document.getElementById('clock-display').innerText = now.toTimeString().split(' ')[0]; }, 1000);
         selectedDateStr = getLocalYYYYMMDD(new Date());
-        pullDataFromCloud();
+        
+        // 🚨 關鍵修復 2：優先從瀏覽器本地拿資料！
+        var localBackup = localStorage.getItem('appDataBackup_' + currentViewingUser);
+        if (localBackup) {
+            appData = JSON.parse(localBackup);
+            enableUI();
+        }
+        pullDataFromCloud(); // 同時在背景嘗試同步雲端
+    }
+
+    function enableUI() {
+        isDataLoaded = true;
+        document.getElementById('punch-btn-element').disabled = false;
+        document.getElementById('punch-btn-element').innerText = "✨ 當日健康打卡 ✨";
+        document.getElementById('save-note-btn-el').disabled = false;
+        document.getElementById('note-input').disabled = false;
+        document.getElementById('sync-status').innerText = "✅ 資料已載入";
+        renderCalendar(); selectDay(selectedDateStr);
     }
 
     function pullDataFromCloud() {
         if (!targetUserBinId) return;
         fetch('https://api.jsonbin.io/v3/b/' + targetUserBinId + '/latest', { method: 'GET', headers: { 'X-Master-Key': MASTER_KEY } })
         .then(res => res.json()).then(data => {
-            appData = data.record || {};
-            isDataLoaded = true;
-            document.getElementById('punch-btn-element').disabled = false;
-            document.getElementById('punch-btn-element').innerText = "✨ 當日健康打卡 ✨";
-            document.getElementById('save-note-btn-el').disabled = false;
-            document.getElementById('note-input').disabled = false;
-            document.getElementById('sync-status').innerText = "✅ 雲端同步完成";
-            renderCalendar(); selectDay(selectedDateStr);
+            if (data.record && Object.keys(data.record).length > 0) {
+                appData = Object.assign({}, appData, data.record); // 合併雲端與本地資料
+                localStorage.setItem('appDataBackup_' + currentViewingUser, JSON.stringify(appData)); // 更新本地備份
+            }
+            enableUI();
+        }).catch(err => {
+            console.warn("雲端讀取失敗，但沒關係我們有本地備份！", err);
+            enableUI();
         });
     }
 
     function pushDataToCloud(callback) {
         if (!targetUserBinId || !isDataLoaded) return;
-        document.getElementById('sync-status').innerText = "上傳雲端中...";
+        
+        // 🚨 關鍵修復 3：存檔時，第一時間寫入瀏覽器本地防爆！
+        localStorage.setItem('appDataBackup_' + currentViewingUser, JSON.stringify(appData));
+        document.getElementById('sync-status').innerText = "✅ 已安全儲存於本地";
+
+        // 接著才慢慢嘗試丟到雲端
         fetch('https://api.jsonbin.io/v3/b/' + targetUserBinId, { 
             method: 'PUT', 
-            headers: { 
-                'Content-Type': 'application/json', 
-                'X-Master-Key': MASTER_KEY,
-                'X-Bin-Versioning': 'false' 
-            }, 
+            headers: { 'Content-Type': 'application/json', 'X-Master-Key': MASTER_KEY, 'X-Bin-Versioning': 'false' }, 
             body: JSON.stringify(appData) 
         })
-        .then(res => {
-            if (!res.ok) throw new Error("伺服器拒絕請求，狀態碼：" + res.status); 
-            return res.json();
-        })
-        .then(() => { 
-            document.getElementById('sync-status').innerText = "✅ 儲存成功"; 
-            if(callback) callback(); 
-        })
-        .catch(err => {
-            console.error(err);
-            document.getElementById('sync-status').innerText = "❌ 儲存失敗！";
-            alert("雲端儲存失敗 😭 可能是網路問題或 API 異常。");
-        });
+        .then(res => { if(res.ok) document.getElementById('sync-status').innerText += " (雲端同步成功)"; })
+        .catch(err => console.error("雲端存檔失敗，但本地已保存！"));
+        
+        if(callback) callback(); 
     }
 
     function performPunchIn() {
@@ -267,8 +281,6 @@
         if (!appData[todayStr]) appData[todayStr] = {};
 
         var hour = now.getHours();
-        
-        // 🚨 壞寶寶定義：從凌晨 2 點 一直到 下午 5 點 (17 點) 打卡，通通都是壞寶寶！
         var punchStatus = (hour >= 2 && hour < 17) ? "😈 壞寶寶" : "🌟 乖寶寶";
 
         appData[todayStr].punch = punchStatus + " (" + now.toTimeString().substring(0,5) + ")";
