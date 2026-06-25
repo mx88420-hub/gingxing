@@ -125,8 +125,8 @@
     var isRegisterMode = false, currentUser = "", targetUserBinId = "", currentViewingUser = ""; 
     var globalUsersDatabase = {}, appData = {}, currentDate = new Date(), selectedDateStr = ""; 
     var isDataLoaded = false; 
+    var clockInterval; // 💡 新增：防止時鐘計時器重疊
 
-    // ✅ 修正：精準取得「當地時間」的 YYYY-MM-DD，避免時差造成紀錄存到前一天
     function getLocalYYYYMMDD(d) {
         return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
     }
@@ -139,7 +139,6 @@
             
             document.getElementById('login-overlay').style.display = 'none';
             document.getElementById('main-system').style.display = 'flex';
-            // ✅ 修正：解決「假性登出」視覺 Bug，將帳號顯示在畫面上
             document.getElementById('user-display').innerText = "目前登入：" + currentViewingUser;
             
             lockInterfaceForLoading();
@@ -181,7 +180,15 @@
                 fetch('https://api.jsonbin.io/v3/b', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Master-Key': MASTER_KEY, 'X-Bin-Private': 'true' }, body: JSON.stringify({}) })
                 .then(res => res.json()).then(newBin => {
                     globalUsersDatabase[userIn] = { password: passIn, binId: newBin.metadata.id };
-                    return fetch('https://api.jsonbin.io/v3/b/' + GLOBAL_REG_BIN, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Master-Key': MASTER_KEY }, body: JSON.stringify(globalUsersDatabase) });
+                    return fetch('https://api.jsonbin.io/v3/b/' + GLOBAL_REG_BIN, { 
+                        method: 'PUT', 
+                        headers: { 
+                            'Content-Type': 'application/json', 
+                            'X-Master-Key': MASTER_KEY,
+                            'X-Bin-Versioning': 'false' // 💡 確保總資料庫也不會被塞爆
+                        }, 
+                        body: JSON.stringify(globalUsersDatabase) 
+                    });
                 }).then(() => { alert("註冊成功！"); toggleAuthMode(); });
             } else {
                 if(globalUsersDatabase[userIn] && globalUsersDatabase[userIn].password === passIn) {
@@ -209,8 +216,8 @@
     function performLogout() { localStorage.clear(); window.location.reload(); }
 
     function initSystem() {
-        setInterval(() => { var now = new Date(); document.getElementById('clock-display').innerText = now.toTimeString().split(' ')[0]; }, 1000);
-        // ✅ 修正：使用當地時間初始化
+        if (clockInterval) clearInterval(clockInterval); // 💡 清除舊的時鐘
+        clockInterval = setInterval(() => { var now = new Date(); document.getElementById('clock-display').innerText = now.toTimeString().split(' ')[0]; }, 1000);
         selectedDateStr = getLocalYYYYMMDD(new Date());
         pullDataFromCloud();
     }
@@ -233,19 +240,40 @@
     function pushDataToCloud(callback) {
         if (!targetUserBinId || !isDataLoaded) return;
         document.getElementById('sync-status').innerText = "上傳雲端中...";
-        fetch('https://api.jsonbin.io/v3/b/' + targetUserBinId, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Master-Key': MASTER_KEY }, body: JSON.stringify(appData) })
+        fetch('https://api.jsonbin.io/v3/b/' + targetUserBinId, { 
+            method: 'PUT', 
+            headers: { 
+                'Content-Type': 'application/json', 
+                'X-Master-Key': MASTER_KEY,
+                'X-Bin-Versioning': 'false' // 💡 終極關鍵：不建立新版本，打破 100 次存檔限制！
+            }, 
+            body: JSON.stringify(appData) 
+        })
+        .then(res => {
+            if (!res.ok) throw new Error("伺服器拒絕請求，狀態碼：" + res.status); // 💡 誠實防呆檢查
+            return res.json();
+        })
         .then(() => { 
             document.getElementById('sync-status').innerText = "✅ 儲存成功"; 
             if(callback) callback(); 
+        })
+        .catch(err => {
+            console.error(err);
+            document.getElementById('sync-status').innerText = "❌ 儲存失敗！";
+            alert("雲端儲存失敗 😭 可能是網路問題或 API 異常。");
         });
     }
 
     function performPunchIn() {
         if(!isDataLoaded) return;
-        // ✅ 修正：使用精準的當地時間打卡，這樣紀錄才不會存到昨天！
-        var todayStr = getLocalYYYYMMDD(new Date());
+        var now = new Date();
+        var todayStr = getLocalYYYYMMDD(now);
         if (!appData[todayStr]) appData[todayStr] = {};
-        appData[todayStr].punch = "🌟 乖寶寶 (" + new Date().toTimeString().substring(0,5) + ")";
+
+        var hour = now.getHours();
+        var punchStatus = (hour >= 2 && hour < 12) ? "😈 壞寶寶" : "🌟 乖寶寶";
+
+        appData[todayStr].punch = punchStatus + " (" + now.toTimeString().substring(0,5) + ")";
         pushDataToCloud(() => { renderCalendar(); selectDay(todayStr); });
     }
 
