@@ -86,6 +86,13 @@
         <div id="admin-user-selector-box">
             <label>👑 選擇要查看的用戶資料</label>
             <select id="admin-select-user" onchange="adminSwitchUserView()"></select>
+            
+            <div style="margin-top: 15px; padding-top: 15px; border-top: 1px dashed #CCC;">
+                <label style="font-size: 13px; color: #555; font-weight: bold;">➕ 新增使用者 (僅管理員可用)</label>
+                <input type="text" id="admin-new-user" placeholder="輸入新帳號" style="width: 100%; padding: 8px; margin-top: 8px; border-radius: 8px; border: 1px solid #CCC; box-sizing: border-box;">
+                <input type="text" id="admin-new-pass" placeholder="輸入新密碼" style="width: 100%; padding: 8px; margin-top: 8px; border-radius: 8px; border: 1px solid #CCC; box-sizing: border-box;">
+                <button onclick="adminCreateUser(event)" style="width: 100%; padding: 10px; margin-top: 10px; background: var(--primary-blue); border: none; border-radius: 8px; cursor: pointer; font-weight: bold; color: #5D5D5D;">建立帳號</button>
+            </div>
         </div>
 
         <div class="tag-title">早睡早起身體好</div>
@@ -144,7 +151,22 @@
             lockInterfaceForLoading();
             if(HARDCODED_USERS[currentUser] && HARDCODED_USERS[currentUser].isAdmin) {
                 fetch('https://api.jsonbin.io/v3/b/' + GLOBAL_REG_BIN + '/latest', { method: 'GET', headers: { 'X-Master-Key': MASTER_KEY } })
-                .then(r => r.json()).then(d => { globalUsersDatabase = d.record || {}; setupAdminConsole(); adminSwitchUserView(); });
+                .then(r => {
+                    if(!r.ok) throw new Error("讀取全球用戶庫失敗 (可能金鑰已失效)");
+                    return r.json();
+                })
+                .then(d => { 
+                    globalUsersDatabase = d.record || {}; 
+                    setupAdminConsole(); 
+                    adminSwitchUserView(); 
+                })
+                .catch(err => {
+                    console.error(err);
+                    alert("⚠️ 管理員初始化失敗：\n" + err.message);
+                    // 即使失敗也先讓畫面出來，確保本地備份可以運作
+                    setupAdminConsole(); 
+                    adminSwitchUserView();
+                });
             } else { initSystem(); }
         }
     };
@@ -163,26 +185,23 @@
         document.getElementById('switch-mode-btn').innerText = isRegisterMode ? "已有帳號？返回登入" : "還沒有帳號？免費註冊";
     }
 
-    // 🚨 關鍵修復：替註冊/登入按鈕加上完整的錯誤處理與載入狀態
     function handleFormSubmit() {
         var userIn = document.getElementById('username').value.trim().toLowerCase();
         var passIn = document.getElementById('password').value.trim();
-        var btn = document.getElementById('btn-main-submit'); // 取得按鈕元素
+        var btn = document.getElementById('btn-main-submit'); 
 
         if(!userIn || !passIn) return alert("請填寫帳號及密碼！");
         
-        // 內建管理員直接放行
         if(!isRegisterMode && HARDCODED_USERS[userIn] && HARDCODED_USERS[userIn].pass === passIn) {
             localStorage.setItem('health_user', userIn); localStorage.setItem('health_binId', HARDCODED_USERS[userIn].binId); window.location.reload(); return;
         }
         
-        // 按下後先鎖定按鈕，防止狂按，並提示連線中
         btn.innerText = "⏳ 連線中...";
         btn.disabled = true;
 
         fetch('https://api.jsonbin.io/v3/b/' + GLOBAL_REG_BIN + '/latest', { method: 'GET', headers: { 'X-Master-Key': MASTER_KEY } })
         .then(res => {
-            if (!res.ok) throw new Error("讀取全球用戶庫失敗 (代碼: " + res.status + ")");
+            if (!res.ok) throw new Error("讀取全球用戶庫失敗 (代碼: " + res.status + ")\n可能金鑰已被伺服器封鎖。");
             return res.json();
         })
         .then(data => {
@@ -193,14 +212,13 @@
                     return alert("❌ 這個帳號已經被註冊過囉！請換一個。");
                 }
                 
-                // 嘗試建立專屬的新雲端空間
                 return fetch('https://api.jsonbin.io/v3/b', { 
                     method: 'POST', 
                     headers: { 'Content-Type': 'application/json', 'X-Master-Key': MASTER_KEY, 'X-Bin-Private': 'true' }, 
                     body: JSON.stringify({}) 
                 })
                 .then(res => {
-                    if (!res.ok) throw new Error("無法建立新用戶空間！\n\n(可能原因：JSONBin 的免費額度已經被用完了)");
+                    if (!res.ok) throw new Error("無法建立新用戶空間！");
                     return res.json();
                 })
                 .then(newBin => {
@@ -215,7 +233,7 @@
                     if (!res.ok) throw new Error("無法更新全球用戶名單！");
                     alert("🎉 註冊成功！請直接登入。"); 
                     btn.disabled = false;
-                    toggleAuthMode(); // 切換回登入模式
+                    toggleAuthMode(); 
                 });
             } else {
                 if(globalUsersDatabase[userIn] && globalUsersDatabase[userIn].password === passIn) {
@@ -227,7 +245,6 @@
             }
         })
         .catch(err => {
-            // 🚨 如果發生任何錯誤，會跳到這裡並顯示給使用者看，按鈕也會恢復
             console.error(err);
             alert("⚠️ 系統發生錯誤：\n" + err.message);
             btn.innerText = isRegisterMode ? "註冊" : "登入"; 
@@ -248,6 +265,52 @@
         targetUserBinId = HARDCODED_USERS[currentViewingUser] ? HARDCODED_USERS[currentViewingUser].binId : globalUsersDatabase[currentViewingUser].binId;
         document.getElementById('user-display').innerText = "目前查看：" + currentViewingUser;
         lockInterfaceForLoading(); appData = {}; initSystem();
+    }
+
+    // 💡 新增：管理員專屬的新增使用者功能
+    function adminCreateUser(event) {
+        var newUser = document.getElementById('admin-new-user').value.trim().toLowerCase();
+        var newPass = document.getElementById('admin-new-pass').value.trim();
+        var btn = event.target;
+
+        if(!newUser || !newPass) return alert("請填寫新帳號與密碼！");
+        if(globalUsersDatabase[newUser] || HARDCODED_USERS[newUser]) return alert("此帳號已經存在！");
+
+        btn.innerText = "⏳ 建立中...";
+        btn.disabled = true;
+
+        fetch('https://api.jsonbin.io/v3/b', { 
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json', 'X-Master-Key': MASTER_KEY, 'X-Bin-Private': 'true' }, 
+            body: JSON.stringify({}) 
+        })
+        .then(res => {
+            if (!res.ok) throw new Error("雲端空間建立失敗 (代碼: " + res.status + ")\n如果還是 401，代表金鑰徹底失效了。");
+            return res.json();
+        })
+        .then(newBin => {
+            globalUsersDatabase[newUser] = { password: newPass, binId: newBin.metadata.id };
+            return fetch('https://api.jsonbin.io/v3/b/' + GLOBAL_REG_BIN, { 
+                method: 'PUT', 
+                headers: { 'Content-Type': 'application/json', 'X-Master-Key': MASTER_KEY, 'X-Bin-Versioning': 'false' }, 
+                body: JSON.stringify(globalUsersDatabase) 
+            });
+        })
+        .then(res => {
+            if (!res.ok) throw new Error("全球清單更新失敗！");
+            alert("✅ 成功建立新用戶：" + newUser);
+            document.getElementById('admin-new-user').value = "";
+            document.getElementById('admin-new-pass').value = "";
+            setupAdminConsole(); // 重新整理下拉選單
+        })
+        .catch(err => {
+            console.error(err);
+            alert("⚠️ 建立失敗：\n" + err.message);
+        })
+        .finally(() => {
+            btn.innerText = "建立帳號";
+            btn.disabled = false;
+        });
     }
 
     function performLogout() { 
