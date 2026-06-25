@@ -56,165 +56,36 @@
             box-sizing: border-box;
         }
 
-        .login-box h3 {
-            margin-top: 0;
-            color: #6C7A89;
-            font-size: 22px;
-            margin-bottom: 20px;
-        }
-
-        .input-group {
-            margin-bottom: 15px;
-            text-align: left;
-        }
-
-        .input-group label {
-            display: block;
-            font-size: 14px;
-            color: #888;
-            margin-bottom: 5px;
-            font-weight: bold;
-        }
-
-        .login-input {
-            width: 100%;
-            padding: 12px;
-            border: 2px solid #E0E0E0;
-            border-radius: 12px;
-            box-sizing: border-box;
-            font-size: 16px;
-        }
-
+        .login-box h3 { margin-top: 0; color: #6C7A89; font-size: 22px; margin-bottom: 20px; }
+        .input-group { margin-bottom: 15px; text-align: left; }
+        .input-group label { display: block; font-size: 14px; color: #888; margin-bottom: 5px; font-weight: bold; }
+        .login-input { width: 100%; padding: 12px; border: 2px solid #E0E0E0; border-radius: 12px; box-sizing: border-box; font-size: 16px; }
         .login-input:focus { outline: none; border-color: var(--primary-purple); }
+        .btn-group { display: flex; gap: 10px; margin-top: 15px; }
 
-        .btn-group {
-            display: flex;
-            gap: 10px;
-            margin-top: 15px;
-        }
-
-        .btn-action {
-            flex: 1;
-            padding: 12px;
-            font-size: 15px;
-            color: white;
-            border: none;
-            border-radius: 50px;
-            cursor: pointer;
-            font-weight: bold;
-            transition: all 0.2s;
-        }
-        
+        .btn-action { flex: 1; padding: 12px; font-size: 15px; color: white; border: none; border-radius: 50px; cursor: pointer; font-weight: bold; transition: all 0.2s; }
         .btn-action:disabled { cursor: not-allowed; opacity: 0.7; }
         .btn-login-submit { background-color: var(--primary-purple); box-shadow: 0 5px 15px rgba(225, 190, 231, 0.5); }
         .btn-register-submit { background-color: var(--primary-blue); color: #5D5D5D; }
-
-        .switch-mode-text {
-            margin-top: 15px;
-            font-size: 13px;
-            color: #888;
-            cursor: pointer;
-            text-decoration: underline;
-        }
-
-        #login-error {
-            color: var(--danger-color);
-            font-size: 14px;
-            margin-top: 10px;
-            font-weight: bold;
-            display: none;
-            background: #FFEBEE;
-            padding: 10px;
-            border-radius: 8px;
-        }
+        .switch-mode-text { margin-top: 15px; font-size: 13px; color: #888; cursor: pointer; text-decoration: underline; }
+        #login-error { color: var(--danger-color); font-size: 14px; margin-top: 10px; font-weight: bold; display: none; background: #FFEBEE; padding: 10px; border-radius: 8px; }
 
         /* 主畫面布局 */
-        .main-layout {
-            display: flex;
-            gap: 25px;
-            max-width: 1150px;
-            width: 100%;
-            flex-wrap: wrap;
-            display: none;
-        }
+        .main-layout { display: flex; gap: 25px; max-width: 1150px; width: 100%; flex-wrap: wrap; display: none; }
+        .left-panel, .right-panel { background: var(--card-bg); border-radius: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.03); padding: 25px; box-sizing: border-box; }
+        .left-panel { flex: 1; min-width: 320px; border: 4px solid var(--primary-pink); text-align: center; }
+        .right-panel { flex: 1.6; min-width: 420px; border: 4px solid var(--primary-blue); }
 
-        .left-panel, .right-panel {
-            background: var(--card-bg);
-            border-radius: 24px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.03);
-            padding: 25px;
-            box-sizing: border-box;
-        }
-
-        .left-panel {
-            flex: 1;
-            min-width: 320px;
-            border: 4px solid var(--primary-pink);
-            text-align: center;
-        }
-
-        .right-panel {
-            flex: 1.6;
-            min-width: 420px;
-            border: 4px solid var(--primary-blue);
-        }
-
-        .tag-title {
-            background-color: var(--primary-purple);
-            display: inline-block;
-            padding: 6px 18px;
-            border-radius: 20px;
-            color: white;
-            font-size: 18px;
-            margin-bottom: 15px;
-        }
-
-        .clock {
-            font-size: 38px;
-            font-weight: bold;
-            color: #4A4A4A;
-            margin: 10px 0;
-            background: var(--primary-green);
-            padding: 10px;
-            border-radius: 15px;
-            display: inline-block;
-        }
-
-        .slogan-box {
-            background-color: #FFF4E5;
-            border-left: 5px solid var(--primary-yellow);
-            padding: 12px;
-            border-radius: 8px;
-            margin: 15px 0;
-            font-size: 14px;
-            color: #8A6D3B;
-            text-align: left;
-            line-height: 1.4;
-        }
+        .tag-title { background-color: var(--primary-purple); display: inline-block; padding: 6px 18px; border-radius: 20px; color: white; font-size: 18px; margin-bottom: 15px; }
+        .clock { font-size: 38px; font-weight: bold; color: #4A4A4A; margin: 10px 0; background: var(--primary-green); padding: 10px; border-radius: 15px; display: inline-block; }
+        .slogan-box { background-color: #FFF4E5; border-left: 5px solid var(--primary-yellow); padding: 12px; border-radius: 8px; margin: 15px 0; font-size: 14px; color: #8A6D3B; text-align: left; line-height: 1.4; }
 
         /* 👑 管理員專用選單 */
-        #admin-user-selector-box {
-            background: #F0F4F8;
-            border: 2px dashed #B0C4DE;
-            padding: 10px;
-            border-radius: 12px;
-            margin-bottom: 15px;
-            display: none;
-            text-align: left;
-        }
+        #admin-user-selector-box { background: #F0F4F8; border: 2px dashed #B0C4DE; padding: 10px; border-radius: 12px; margin-bottom: 15px; display: none; text-align: left; }
         #admin-user-selector-box label { font-size: 12px; font-weight: bold; color: #4682B4; }
         select { width: 100%; padding: 8px; margin-top: 5px; border-radius: 8px; border: 1px solid #CCC; }
 
-        .btn {
-            color: white;
-            border: none;
-            padding: 12px 25px;
-            font-size: 16px;
-            border-radius: 50px;
-            cursor: pointer;
-            font-weight: bold;
-            transition: all 0.2s;
-        }
+        .btn { color: white; border: none; padding: 12px 25px; font-size: 16px; border-radius: 50px; cursor: pointer; font-weight: bold; transition: all 0.2s; }
         .btn-punch { background-color: var(--primary-pink); width: 100%; padding: 15px; font-size: 18px; box-shadow: 0 5px 15px rgba(255, 183, 178, 0.4); margin-bottom: 10px; }
         .btn-punch:disabled { background-color: #CCCCCC !important; color: #666666 !important; box-shadow: none !important; cursor: not-allowed; }
         .btn-sync { background-color: var(--primary-blue); color: #5D5D5D; font-size: 13px; padding: 5px 15px; border-radius: 10px; margin-bottom: 15px; display: inline-block; }
@@ -236,42 +107,15 @@
         .day-status { font-size: 11px; margin-top: auto; font-weight: bold; text-align: center; }
 
         /* 📋 右側面板：歷史紀錄 */
-        .history-list-box {
-            margin-top: 20px;
-            background-color: #FDFDFD;
-            border: 2px dashed #CED4DA;
-            border-radius: 16px;
-            padding: 15px;
-            text-align: left;
-        }
-        .history-list-title {
-            font-size: 15px;
-            font-weight: bold;
-            color: #4A4A4A;
-            margin-bottom: 10px;
-            border-bottom: 2px solid var(--primary-blue);
-            padding-bottom: 5px;
-            display: flex;
-            justify-content: space-between;
-        }
-        .history-items-container {
-            max-height: 180px;
-            overflow-y: auto;
-            font-size: 13px;
-        }
-        .history-item {
-            padding: 8px;
-            border-bottom: 1px dashed #E0E0E0;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
+        .history-list-box { margin-top: 20px; background-color: #FDFDFD; border: 2px dashed #CED4DA; border-radius: 16px; padding: 15px; text-align: left; }
+        .history-list-title { font-size: 15px; font-weight: bold; color: #4A4A4A; margin-bottom: 10px; border-bottom: 2px solid var(--primary-blue); padding-bottom: 5px; display: flex; justify-content: space-between; }
+        .history-items-container { max-height: 180px; overflow-y: auto; font-size: 13px; }
+        .history-item { padding: 8px; border-bottom: 1px dashed #E0E0E0; display: flex; justify-content: space-between; align-items: center; }
         .history-item:last-child { border-bottom: none; }
 
         /* 📝 日記編輯區 */
         .editor-section { margin-top: 20px; background: #FDFDFD; border: 2px dashed #E0E0E0; border-radius: 15px; padding: 15px; }
         .editor-title { font-size: 15px; font-weight: bold; margin-bottom: 10px; color: #7A869A; }
-        
         textarea { width: 100%; height: 90px; border: 1px solid #DDD; border-radius: 10px; padding: 10px; box-sizing: border-box; resize: none; font-family: inherit; margin-bottom: 10px; }
         textarea:disabled { background-color: #F5F5F5; cursor: not-allowed; }
         .save-btn { background-color: var(--primary-purple); padding: 8px 20px; font-size: 14px; float: right; }
@@ -389,20 +233,14 @@
     var currentDate = new Date(); 
     var selectedDateStr = ""; 
     var syncIntervalId = null;
-    var isDataLoaded = false; // ✨ 安全鎖：確保雲端下載完成前，完全鎖定介面
+    
+    // ✨ 核心鎖定變數：確保完全下載完畢前，絕對不會上傳覆蓋雲端！
+    var isDataLoaded = false; 
 
     window.onload = function() {
         var savedUser = localStorage.getItem('health_user');
         var savedBinId = localStorage.getItem('health_binId');
         var savedViewingUser = localStorage.getItem('health_viewUser');
-        var needForceReload = localStorage.getItem('health_force_reload');
-        
-        // 🌟 核心修正：如果是剛登入，執行乾淨的強制重新整理來對齊雲端電路
-        if (needForceReload === "true") {
-            localStorage.removeItem('health_force_reload');
-            window.location.reload();
-            return;
-        }
         
         if (savedUser && savedBinId) {
             currentUser = savedUser;
@@ -412,7 +250,7 @@
             document.getElementById('login-overlay').style.display = 'none';
             document.getElementById('main-system').style.display = 'flex';
             
-            lockInterfaceForLoading(); // 載入前先鎖定所有按鈕
+            lockInterfaceForLoading();
 
             if(HARDCODED_USERS[currentUser] && HARDCODED_USERS[currentUser].isAdmin) {
                 document.getElementById('user-display').innerText = "👑 管理員：" + currentUser;
@@ -491,12 +329,12 @@
         submitBtn.disabled = true;
         var restoreButton = function() { submitBtn.innerText = originalText; submitBtn.disabled = false; };
 
+        // 登入時只把資訊存入 localStorage 讓網頁知道「誰登入了」，不刪雲端
         if(!isRegisterMode && HARDCODED_USERS[userIn]) {
             if(HARDCODED_USERS[userIn].pass === passIn) {
                 localStorage.setItem('health_user', userIn);
                 localStorage.setItem('health_binId', HARDCODED_USERS[userIn].binId);
                 localStorage.setItem('health_viewUser', userIn);
-                localStorage.setItem('health_force_reload', "true"); // 標記需要重載
                 window.location.reload(); 
                 return;
             } else { showError("❌ 密碼不正確！"); restoreButton(); return; }
@@ -532,7 +370,6 @@
                     localStorage.setItem('health_user', userIn);
                     localStorage.setItem('health_binId', globalUsersDatabase[userIn].binId);
                     localStorage.setItem('health_viewUser', userIn);
-                    localStorage.setItem('health_force_reload', "true"); // 標記需要重載
                     window.location.reload();
                 } else { showError("❌ 帳號或密碼不正確！"); restoreButton(); }
             }
@@ -575,20 +412,22 @@
         var noteIn = document.getElementById('note-input');
         if(noteIn) noteIn.value = "";
 
-        lockInterfaceForLoading(); // 切換用戶時，重新鎖定按鈕直到載入完畢
+        lockInterfaceForLoading(); 
+        appData = {}; // 切換用戶時清空暫存，等待從雲端拉取真正的資料
         initSystem();
     }
 
+    /* =========================================================
+       🔒 安全登出：這裡「只會」清除瀏覽器的記住密碼與狀態
+       絕對不會、也沒有程式碼去碰觸或刪除雲端的 JSONBin 打卡紀錄！
+       ========================================================= */
     function performLogout() {
-        localStorage.removeItem('health_user');
-        localStorage.removeItem('health_binId');
-        localStorage.removeItem('health_viewUser');
-        localStorage.removeItem('health_force_reload');
+        localStorage.clear(); 
         if (syncIntervalId) clearInterval(syncIntervalId);
         window.location.reload();
     }
 
-    // ✨ 安全密碼清空機制
+    /* 🗑️ 真・刪除功能：必須手動點擊按鈕，且輸入 0105 密碼才會刪除 */
     function secureClearData() {
         var pw = prompt("⚠️ 警告：這將永久刪除 [" + currentViewingUser + "] 的所有打卡與日記紀錄！\n請輸入安全密碼以確認清除：");
         if (pw === "0105") {
@@ -656,6 +495,7 @@
         if(sloganEl) sloganEl.innerText = slogans[randomIndex];
     }
 
+    /* ☁️ 下載紀錄：這裡把雲端的心血下載回畫面，保證不掉資料 */
     function pullDataFromCloud() {
         if (!targetUserBinId) return;
         var syncStatusEl = document.getElementById('sync-status');
@@ -666,10 +506,10 @@
         })
         .then(function(res) { return res.json(); })
         .then(function(data) {
+            // 抓取真實紀錄，取代空殼
             appData = data.record || {};
-            isDataLoaded = true; // ✨ 雲端下載完畢，解除安全鎖
+            isDataLoaded = true; // ✨ 雲端下載完畢，解除安全鎖，允許操作！
 
-            // 依據目前檢視權限與加載狀態控制按鈕
             if(currentViewingUser !== currentUser) {
                 document.getElementById('punch-btn-element').style.display = 'none';
                 document.getElementById('save-note-btn-el').style.display = 'none';
@@ -695,8 +535,10 @@
         });
     }
 
+    /* ☁️ 儲存紀錄：如果還沒下載完畢，絕對不准上傳，杜絕洗白覆蓋！ */
     function pushDataToCloud() {
-        if (!targetUserBinId || !isDataLoaded) return; // ✨ 安全鎖：未完全載入前，絕對不允許寫回雲端
+        if (!targetUserBinId || !isDataLoaded) return; 
+
         fetch('https://api.jsonbin.io/v3/b/' + targetUserBinId, {
             method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Master-Key': MASTER_KEY },
             body: JSON.stringify(appData)
@@ -716,6 +558,7 @@
         var punchDates = Object.keys(appData).filter(function(key) {
             return key.match(/^\d{4}-\d{2}-\d{2}$/) && appData[key].punch;
         }).sort().reverse();
+        
         if (punchDates.length === 0) {
             container.innerHTML = '<div style="color:#aaa; text-align:center; padding-top:20px;">該帳號尚無歷史打卡資料</div>';
             return;
