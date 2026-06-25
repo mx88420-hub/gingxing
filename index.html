@@ -124,9 +124,10 @@
 </div>
 
 <script>
-    var GLOBAL_REG_BIN = '6a3b7243f5f4af5e29272dc4'; 
-    var MASTER_KEY = '$2a$10$hI.UbvJsfQa.7SxfrbZQE./.4pB/55flm6kq88Vuwgt/3IzyMB5ii';
-    var ORIGINAL_BIN = '65ab19e51f5677613ba2a488'; 
+    // ✅ 更新了你剛剛提供的新金鑰與新 Bin ID
+    var GLOBAL_REG_BIN = '6a3d7acaf5f4af5e29309378'; 
+    var MASTER_KEY = '$2a$10$uDLSEKhyFmK14AA1n/zKsOF4ycKywvNui6vyDZB8teV4Ph9Hp9NTO';
+    var ORIGINAL_BIN = '6a3b7243f5f4af5e29272dc4'; 
 
     var HARDCODED_USERS = { 'ginggingxing': { pass: '0979365961', isAdmin: true, binId: ORIGINAL_BIN } };
     var isRegisterMode = false, currentUser = "", targetUserBinId = "", currentViewingUser = ""; 
@@ -163,7 +164,6 @@
                 .catch(err => {
                     console.error(err);
                     alert("⚠️ 管理員初始化失敗：\n" + err.message);
-                    // 即使失敗也先讓畫面出來，確保本地備份可以運作
                     setupAdminConsole(); 
                     adminSwitchUserView();
                 });
@@ -267,7 +267,6 @@
         lockInterfaceForLoading(); appData = {}; initSystem();
     }
 
-    // 💡 新增：管理員專屬的新增使用者功能
     function adminCreateUser(event) {
         var newUser = document.getElementById('admin-new-user').value.trim().toLowerCase();
         var newPass = document.getElementById('admin-new-pass').value.trim();
@@ -285,7 +284,7 @@
             body: JSON.stringify({}) 
         })
         .then(res => {
-            if (!res.ok) throw new Error("雲端空間建立失敗 (代碼: " + res.status + ")\n如果還是 401，代表金鑰徹底失效了。");
+            if (!res.ok) throw new Error("雲端空間建立失敗 (代碼: " + res.status + ")");
             return res.json();
         })
         .then(newBin => {
@@ -301,7 +300,7 @@
             alert("✅ 成功建立新用戶：" + newUser);
             document.getElementById('admin-new-user').value = "";
             document.getElementById('admin-new-pass').value = "";
-            setupAdminConsole(); // 重新整理下拉選單
+            setupAdminConsole(); 
         })
         .catch(err => {
             console.error(err);
