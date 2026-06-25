@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>早睡早起身體好 - 照片常駐雲端版</title>
+    <title>早睡早起身體好 - 純文字打卡雲端版</title>
     <style>
         :root {
             --bg-color: #F6F8FA; --card-bg: #FFFFFF;
@@ -54,11 +54,6 @@
         .editor-section { margin-top: 20px; background: #FDFDFD; border: 2px dashed #E0E0E0; border-radius: 15px; padding: 15px; }
         .editor-title { font-size: 15px; font-weight: bold; margin-bottom: 10px; color: #7A869A; }
         
-        /* 照片區塊樣式 */
-        .photo-section { margin-bottom: 15px; background: #f9f9f9; padding: 10px; border-radius: 10px; border: 1px solid #eee; }
-        #photo-preview-box { width: 100%; min-height: 150px; border: 2px dashed #ccc; border-radius: 8px; display: flex; justify-content: center; align-items: center; overflow: hidden; background: #fff; margin-top: 8px; }
-        #food-img-element { max-width: 100%; max-height: 300px; object-fit: contain; display: none; }
-        
         textarea { width: 100%; height: 90px; border: 1px solid #DDD; border-radius: 10px; padding: 10px; box-sizing: border-box; resize: none; margin-bottom: 10px; }
         .save-btn { background-color: var(--primary-purple); float: right; padding: 8px 20px; font-size: 14px; }
         .clear { clear: both; }
@@ -84,8 +79,8 @@
 <div class="main-layout" id="main-system">
     <div class="left-panel">
         <div class="user-panel-top">
-            <div id="user-display">目前登入：--</div>
-            <button class="btn-logout" onclick="performLogout()">🔒 登出 (不刪紀錄)</button>
+            <div id="user-display" style="font-weight: bold; color: var(--primary-purple);">目前登入：--</div>
+            <button class="btn-logout" onclick="performLogout()">🔒 登出</button>
         </div>
         
         <div id="admin-user-selector-box">
@@ -114,16 +109,6 @@
             <div class="editor-title" id="editor-date-title">選擇日期來記錄生活吧！</div>
             <div id="day-punch-history" style="font-size: 13px; color: #666; margin-bottom: 10px; font-weight: bold;"></div>
             
-            <div class="photo-section">
-                <div style="font-weight: bold; font-size: 14px; color: #5D5D5D;">📷 記錄三餐與生活照片</div>
-                <input type="file" id="photo-file-input" accept="image/*" onchange="handleImageUpload(event)" style="font-size: 12px; margin-top: 8px;">
-                <div id="photo-preview-box">
-                    <div id="photo-placeholder-text" style="color: #aaa; font-size: 13px;">今日尚未上傳照片</div>
-                    <img id="food-img-element" src="">
-                </div>
-                <div id="img-upload-status" class="loading-text" style="color:#B5E2FA; font-weight:bold;"></div>
-            </div>
-
             <textarea id="note-input" placeholder="今天有什麼想分享的心情..." disabled></textarea>
             <button id="save-note-btn-el" class="btn save-btn" disabled onclick="saveDailyNote()">儲存今日心情</button>
             <div class="clear"></div>
@@ -141,13 +126,22 @@
     var globalUsersDatabase = {}, appData = {}, currentDate = new Date(), selectedDateStr = ""; 
     var isDataLoaded = false; 
 
+    // ✅ 修正：精準取得「當地時間」的 YYYY-MM-DD，避免時差造成紀錄存到前一天
+    function getLocalYYYYMMDD(d) {
+        return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    }
+
     window.onload = function() {
         var savedUser = localStorage.getItem('health_user');
         var savedBinId = localStorage.getItem('health_binId');
         if (savedUser && savedBinId) {
             currentUser = savedUser; targetUserBinId = savedBinId; currentViewingUser = savedUser;
+            
             document.getElementById('login-overlay').style.display = 'none';
             document.getElementById('main-system').style.display = 'flex';
+            // ✅ 修正：解決「假性登出」視覺 Bug，將帳號顯示在畫面上
+            document.getElementById('user-display').innerText = "目前登入：" + currentViewingUser;
+            
             lockInterfaceForLoading();
             if(HARDCODED_USERS[currentUser] && HARDCODED_USERS[currentUser].isAdmin) {
                 fetch('https://api.jsonbin.io/v3/b/' + GLOBAL_REG_BIN + '/latest', { method: 'GET', headers: { 'X-Master-Key': MASTER_KEY } })
@@ -161,7 +155,6 @@
         document.getElementById('punch-btn-element').disabled = true;
         document.getElementById('save-note-btn-el').disabled = true;
         document.getElementById('note-input').disabled = true;
-        document.getElementById('photo-file-input').disabled = true;
     }
 
     function toggleAuthMode() {
@@ -209,6 +202,7 @@
     function adminSwitchUserView() {
         currentViewingUser = document.getElementById('admin-select-user').value || currentUser;
         targetUserBinId = HARDCODED_USERS[currentViewingUser] ? HARDCODED_USERS[currentViewingUser].binId : globalUsersDatabase[currentViewingUser].binId;
+        document.getElementById('user-display').innerText = "目前查看：" + currentViewingUser;
         lockInterfaceForLoading(); appData = {}; initSystem();
     }
 
@@ -216,7 +210,8 @@
 
     function initSystem() {
         setInterval(() => { var now = new Date(); document.getElementById('clock-display').innerText = now.toTimeString().split(' ')[0]; }, 1000);
-        selectedDateStr = new Date().toISOString().split('T')[0];
+        // ✅ 修正：使用當地時間初始化
+        selectedDateStr = getLocalYYYYMMDD(new Date());
         pullDataFromCloud();
     }
 
@@ -230,7 +225,6 @@
             document.getElementById('punch-btn-element').innerText = "✨ 當日健康打卡 ✨";
             document.getElementById('save-note-btn-el').disabled = false;
             document.getElementById('note-input').disabled = false;
-            document.getElementById('photo-file-input').disabled = false;
             document.getElementById('sync-status').innerText = "✅ 雲端同步完成";
             renderCalendar(); selectDay(selectedDateStr);
         });
@@ -248,7 +242,8 @@
 
     function performPunchIn() {
         if(!isDataLoaded) return;
-        var todayStr = new Date().toISOString().split('T')[0];
+        // ✅ 修正：使用精準的當地時間打卡，這樣紀錄才不會存到昨天！
+        var todayStr = getLocalYYYYMMDD(new Date());
         if (!appData[todayStr]) appData[todayStr] = {};
         appData[todayStr].punch = "🌟 乖寶寶 (" + new Date().toTimeString().substring(0,5) + ")";
         pushDataToCloud(() => { renderCalendar(); selectDay(todayStr); });
@@ -280,69 +275,7 @@
         
         var historyZone = document.getElementById('day-punch-history');
         historyZone.innerText = (appData[dateStr] && appData[dateStr].punch) ? "當日打卡：" + appData[dateStr].punch : "當日無打卡紀錄";
-
-        // 🖼️ 照片載入邏輯：保證刷新後圖片會回來
-        var imgEl = document.getElementById('food-img-element');
-        var placeholderText = document.getElementById('photo-placeholder-text');
-        var fileIn = document.getElementById('photo-file-input');
-        if(fileIn) fileIn.value = ""; 
-        document.getElementById('img-upload-status').innerText = "";
-
-        if (appData[dateStr] && appData[dateStr].image) {
-            imgEl.src = appData[dateStr].image;
-            imgEl.style.display = 'block';
-            placeholderText.style.display = 'none';
-        } else {
-            imgEl.src = "";
-            imgEl.style.display = 'none';
-            placeholderText.style.display = 'block';
-        }
-
         document.getElementById('note-input').value = (appData[dateStr] && appData[dateStr].note) ? appData[dateStr].note : "";
-    }
-
-    // 📸 照片壓縮與瞬間上傳邏輯
-    function handleImageUpload(event) {
-        if(!isDataLoaded) return;
-        var file = event.target.files[0];
-        if(!file) return;
-
-        var statusEl = document.getElementById('img-upload-status');
-        statusEl.innerText = "⏳ 正在壓縮與上傳照片，請稍候...";
-        
-        var reader = new FileReader();
-        reader.onload = function(e) {
-            var img = new Image();
-            img.onload = function() {
-                var canvas = document.createElement('canvas');
-                var ctx = canvas.getContext('2d');
-                // 將圖片寬度限制在 500px，大幅縮小檔案體積，確保 JSONBin 不會拒收
-                var MAX_WIDTH = 500; 
-                var scaleSize = MAX_WIDTH / img.width;
-                canvas.width = MAX_WIDTH;
-                canvas.height = img.height * scaleSize;
-                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                
-                // 轉為 70% 品質的 JPEG
-                var compressedBase64 = canvas.toDataURL('image/jpeg', 0.7); 
-
-                // 立刻顯示在畫面上
-                var imgEl = document.getElementById('food-img-element');
-                imgEl.src = compressedBase64;
-                imgEl.style.display = 'block';
-                document.getElementById('photo-placeholder-text').style.display = 'none';
-
-                // 寫入變數並強制上傳雲端
-                if (!appData[selectedDateStr]) appData[selectedDateStr] = {};
-                appData[selectedDateStr].image = compressedBase64;
-                
-                pushDataToCloud(() => {
-                    statusEl.innerText = "✅ 照片已成功備份至雲端！刷新也不會不見囉！";
-                });
-            }
-            img.src = e.target.result;
-        };
-        reader.readAsDataURL(file);
     }
 
     function saveDailyNote() {
