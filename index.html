@@ -395,7 +395,7 @@
     var syncIntervalId = null;
     var base64ImageStr = ""; 
 
-    // 網頁載入時自動檢查 LocalStorage 狀態，實現重新整理不登出
+    // ✨ 核心修復：網頁開啟或刷新時，自動檢查 LocalStorage 並登入還原
     window.onload = function() {
         var savedUser = localStorage.getItem('health_user');
         var savedBinId = localStorage.getItem('health_binId');
@@ -492,6 +492,7 @@
                     currentViewingUser = userIn;
                     targetUserBinId = HARDCODED_USERS[userIn].binId;
                     
+                    // ✨ 登入成功寫入 LocalStorage
                     localStorage.setItem('health_user', currentUser);
                     localStorage.setItem('health_binId', targetUserBinId);
                     localStorage.setItem('health_viewUser', currentViewingUser);
@@ -586,6 +587,7 @@
                         currentViewingUser = userIn;
                         targetUserBinId = globalUsersDatabase[userIn].binId;
 
+                        // ✨ 登入成功寫入 LocalStorage
                         localStorage.setItem('health_user', currentUser);
                         localStorage.setItem('health_binId', targetUserBinId);
                         localStorage.setItem('health_viewUser', currentViewingUser);
@@ -641,6 +643,7 @@
         });
     }
 
+    // ✨ 核心修復：加入參數控管，切換檢視時將目前檢視的對象一併記住
     function adminSwitchUserView(isInit) {
         var selectedUser = document.getElementById('admin-select-user').value;
         currentViewingUser = selectedUser;
@@ -671,7 +674,7 @@
 
     function performLogout() {
         currentUser = ""; currentViewingUser = ""; targetUserBinId = "";
-        localStorage.clear(); 
+        localStorage.clear(); // 登出時徹底清空本機暫存
         if (syncIntervalId) clearInterval(syncIntervalId);
         document.getElementById('main-system').style.display = 'none';
         document.getElementById('login-overlay').style.display = 'flex';
@@ -686,7 +689,6 @@
         window.clockIntervalId = setInterval(updateClock, 1000);
         selectedDateStr = formatDateKey(new Date());
         
-        // 🛡️ 重要修正：先去拉取雲端資料，由 pullDataFromCloud 的 Promise 回應內部去觸發 selectDay，防止時間序錯亂
         pullDataFromCloud();
         if (syncIntervalId) clearInterval(syncIntervalId);
         syncIntervalId = setInterval(pullDataFromCloud, 30000);
@@ -723,13 +725,6 @@
         var randomIndex = Math.floor(Math.random() * slogans.length);
         var sloganEl = document.getElementById('slogan-display');
         if(sloganEl) sloganEl.innerText = slogans[randomIndex];
-    }
-
-    function getUserDataNode(userKey) {
-        if(!appData[userKey]) {
-            appData[userKey] = {};
-        }
-        return appData[userKey];
     }
 
     function processAndPreviewImage(input) {
@@ -769,18 +764,15 @@
         if (!targetUserBinId) return;
         var syncStatusEl = document.getElementById('sync-status');
         if(syncStatusEl) syncStatusEl.innerText = "⏳ 讀取 [" + currentViewingUser + "] 的獨立雲端盒...";
-        
         fetch('https://api.jsonbin.io/v3/b/' + targetUserBinId + '/latest', {
             method: 'GET', headers: { 'X-Master-Key': MASTER_KEY }
         })
         .then(function(res) { return res.json(); })
         .then(function(data) {
             appData = data.record || {};
-            
-            // 🛡️ 重要修正：確保資料「拿到之後」，才渲染日曆與選擇當天，不再讓空白值洗掉歷史暫存！
             renderCalendar();
             selectDay(selectedDateStr);
-            
+        
             if(syncStatusEl) syncStatusEl.innerText = "✅ 已即時同步 [" + currentViewingUser + "] 的紀錄";
         })
         .catch(function(err) {
@@ -826,9 +818,8 @@
             resultBox.style.display = 'block';
         }
 
-        var userNode = getUserDataNode(currentUser);
-        if (!userNode[todayStr]) userNode[todayStr] = {};
-        userNode[todayStr].punch = statusSymbol + " (" + hour + ":" + minute + ")";
+        if (!appData[todayStr]) appData[todayStr] = {};
+        appData[todayStr].punch = statusSymbol + " (" + hour + ":" + minute + ")";
         
         pushDataToCloud();
         renderCalendar();
@@ -853,8 +844,6 @@
         for (var i = 0; i < firstDayIndex; i++) grid.appendChild(document.createElement('div'));
         
         var todayStr = formatDateKey(new Date());
-        var userNode = getUserDataNode(currentViewingUser);
-        
         for (var d = 1; d <= totalDays; d++) {
             var dayDiv = document.createElement('div');
             dayDiv.className = 'day';
@@ -863,10 +852,10 @@
             if (loopDateStr === selectedDateStr) dayDiv.classList.add('current-selected');
             
             dayDiv.innerHTML = "<div>" + d + "</div>";
-            if (userNode[loopDateStr]) {
+            if (appData[loopDateStr]) {
                 var indicators = "";
-                if (userNode[loopDateStr].punch) indicators += userNode[loopDateStr].punch.split(' ')[0];
-                if (userNode[loopDateStr].image) indicators += " 🍳";
+                if (appData[loopDateStr].punch) indicators += appData[loopDateStr].punch.split(' ')[0];
+                if (appData[loopDateStr].image) indicators += " 🍳";
                 if(indicators !== "") {
                     var statusDiv = document.createElement('div');
                     statusDiv.className = 'day-status';
@@ -894,13 +883,11 @@
         var m = parts[1]; var d = parts[2];
         var titleEl = document.getElementById('editor-date-title');
         if(titleEl) titleEl.innerText = "📅 觀看/編輯 " + parseInt(m, 10) + "月" + parseInt(d, 10) + "日 的日常紀錄";
-        
-        var userNode = getUserDataNode(currentViewingUser);
         var historyZone = document.getElementById('day-punch-history');
         if(historyZone) {
-            if (userNode[dateStr] && userNode[dateStr].punch) {
-                historyZone.innerText = "當日打卡：" + userNode[dateStr].punch;
-                historyZone.style.color = userNode[dateStr].punch.indexOf("乖") > -1 ? "#2E7D32" : "#C62828";
+            if (appData[dateStr] && appData[dateStr].punch) {
+                historyZone.innerText = "當日打卡：" + appData[dateStr].punch;
+                historyZone.style.color = appData[dateStr].punch.indexOf("乖") > -1 ? "#2E7D32" : "#C62828";
             } else {
                 historyZone.innerText = "當日無打卡紀錄";
                 historyZone.style.color = "#666";
@@ -911,8 +898,8 @@
         var placeholderText = document.getElementById('photo-placeholder-text');
         
         if(imgEl && placeholderText) {
-            if (userNode[dateStr] && userNode[dateStr].image) {
-                base64ImageStr = userNode[dateStr].image;
+            if (appData[dateStr] && appData[dateStr].image) {
+                base64ImageStr = appData[dateStr].image;
                 imgEl.src = base64ImageStr;
                 imgEl.style.display = 'block';
                 placeholderText.style.display = 'none';
@@ -925,18 +912,17 @@
         }
 
         var noteIn = document.getElementById('note-input');
-        if(noteIn) noteIn.value = (userNode[dateStr] && userNode[dateStr].note) ? userNode[dateStr].note : "";
+        if(noteIn) noteIn.value = (appData[dateStr] && appData[dateStr].note) ? appData[dateStr].note : "";
         var fileIn = document.getElementById('photo-file-input');
         if(fileIn) fileIn.value = "";
     }
 
     function saveDailyNote() {
         var text = document.getElementById('note-input').value.trim();
-        var userNode = getUserDataNode(currentUser);
-        if (!userNode[selectedDateStr]) userNode[selectedDateStr] = {};
+        if (!appData[selectedDateStr]) appData[selectedDateStr] = {};
         
-        userNode[selectedDateStr].note = text;
-        userNode[selectedDateStr].image = base64ImageStr; 
+        appData[selectedDateStr].note = text;
+        appData[selectedDateStr].image = base64ImageStr; 
         
         pushDataToCloud();
         renderCalendar(); 
