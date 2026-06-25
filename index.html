@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>早睡早起身體好 - 照片常駐雲端版</title>
+    <title>早睡早起身體好 - 雲端同步版</title>
 
     <style>
         :root {
@@ -13,7 +13,6 @@
             --primary-blue: #B5E2FA;
             --primary-green: #DDF1E7;
             --primary-purple: #E1BEE7;
-            --primary-yellow: #FFDAC1;
             --text-color: #5D5D5D;
             --danger-color: #FF9AA2;
         }
@@ -36,8 +35,7 @@
 
         #login-overlay {
             position: fixed;
-            top: 0;
-            left: 0;
+            inset: 0;
             width: 100%;
             height: 100%;
             background-color: rgba(246, 248, 250, 0.95);
@@ -107,11 +105,6 @@
             background-color: var(--primary-purple);
         }
 
-        .btn-register-submit {
-            background-color: var(--primary-blue);
-            color: #5D5D5D;
-        }
-
         .switch-mode-text {
             margin-top: 15px;
             font-size: 13px;
@@ -129,12 +122,11 @@
         }
 
         .main-layout {
-            display: flex;
+            display: none;
             gap: 25px;
             max-width: 1150px;
             width: 100%;
             flex-wrap: wrap;
-            display: none;
         }
 
         .left-panel,
@@ -220,30 +212,19 @@
             cursor: not-allowed;
         }
 
-        .result-box {
-            margin-top: 15px;
-            padding: 12px;
-            border-radius: 12px;
-            font-size: 18px;
-            font-weight: bold;
-            display: none;
-        }
-
-        .good-baby {
-            background-color: #E8F5E9;
-            color: #2E7D32;
-        }
-
-        .bad-baby {
-            background-color: #FFEBEE;
-            color: #C62828;
-        }
-
         .calendar-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
             margin-bottom: 15px;
+        }
+
+        .calendar-header button {
+            border: none;
+            background: var(--primary-blue);
+            padding: 8px 12px;
+            border-radius: 10px;
+            cursor: pointer;
         }
 
         .calendar-grid {
@@ -343,8 +324,9 @@
 
         .loading-text {
             font-size: 12px;
-            color: #AAA;
+            color: #888;
             margin-top: 5px;
+            min-height: 18px;
         }
 
         .user-panel-top {
@@ -378,10 +360,6 @@
             .right-panel {
                 min-width: 100%;
             }
-
-            .right-panel {
-                min-width: 100%;
-            }
         }
     </style>
 </head>
@@ -394,12 +372,12 @@
 
             <div class="input-group">
                 <label>帳號</label>
-                <input type="text" id="username" class="login-input">
+                <input type="text" id="username" class="login-input" autocomplete="username">
             </div>
 
             <div class="input-group">
                 <label>密碼</label>
-                <input type="password" id="password" class="login-input">
+                <input type="password" id="password" class="login-input" autocomplete="current-password">
             </div>
 
             <div id="login-error"></div>
@@ -415,10 +393,9 @@
     <div class="main-layout" id="main-system">
 
         <div class="left-panel">
-
             <div class="user-panel-top">
                 <div id="user-display">目前登入：--</div>
-                <button class="btn-logout" onclick="performLogout()">🔒 登出（不刪紀錄）</button>
+                <button class="btn-logout" onclick="performLogout()">🔒 登出（不刪除雲端紀錄）</button>
             </div>
 
             <div id="admin-user-selector-box">
@@ -435,12 +412,9 @@
             </button>
 
             <div id="sync-status" class="loading-text">正在同步雲端...</div>
-
-            <div class="result-box" id="result-display"></div>
         </div>
 
         <div class="right-panel">
-
             <div class="calendar-header">
                 <button onclick="changeMonth(-1)">◀</button>
                 <h2 id="calendar-month-year" style="margin: 0; font-size: 20px;">2026年 --月</h2>
@@ -450,7 +424,6 @@
             <div class="calendar-grid" id="calendar-grid"></div>
 
             <div class="editor-section">
-
                 <div class="editor-title" id="editor-date-title">選擇日期來記錄生活吧！</div>
 
                 <div id="day-punch-history" style="font-size: 13px; color: #666; margin-bottom: 10px; font-weight: bold;"></div>
@@ -464,6 +437,7 @@
                         accept="image/*"
                         onchange="handleImageUpload(event)"
                         style="font-size: 12px; margin-top: 8px;"
+                        disabled
                     >
 
                     <div id="photo-preview-box">
@@ -471,7 +445,7 @@
                         <img id="food-img-element" src="" alt="生活紀錄照片">
                     </div>
 
-                    <div id="img-upload-status" class="loading-text" style="color: #B5E2FA; font-weight: bold;"></div>
+                    <div id="img-upload-status" class="loading-text"></div>
                 </div>
 
                 <textarea id="note-input" placeholder="今天有什麼想分享的心情..." disabled></textarea>
@@ -485,9 +459,9 @@
 
     <script>
         /*
-            注意：
-            這是沿用你原本的 JSONBin 架構。
-            請保留你原本自己的 Bin ID、Master Key、管理員帳號資料。
+        ======================================================
+        你的 JSONBin 設定
+        ======================================================
         */
 
         var GLOBAL_REG_BIN = '6a3b7243f5f4af5e29272dc4';
@@ -502,24 +476,44 @@
             }
         };
 
+        /*
+        ======================================================
+        全域變數
+        ======================================================
+        */
+
         var isRegisterMode = false;
         var currentUser = "";
-        var targetUserBinId = "";
         var currentViewingUser = "";
+        var targetUserBinId = "";
         var globalUsersDatabase = {};
         var appData = {};
         var currentDate = new Date();
         var selectedDateStr = "";
         var isDataLoaded = false;
-        var clockInterval = null;
         var isSaving = false;
+        var clockInterval = null;
 
-        function getLocalDateStr(date = new Date()) {
+        /*
+        ======================================================
+        基礎工具
+        ======================================================
+        */
+
+        function getLocalDateStr(date) {
+            if (!date) {
+                date = new Date();
+            }
+
             var year = date.getFullYear();
             var month = String(date.getMonth() + 1).padStart(2, '0');
             var day = String(date.getDate()).padStart(2, '0');
 
             return year + "-" + month + "-" + day;
+        }
+
+        function setSyncStatus(text) {
+            document.getElementById('sync-status').innerText = text;
         }
 
         function showLoginError(message) {
@@ -534,29 +528,25 @@
             errorBox.style.display = 'none';
         }
 
-        window.onload = function () {
-            var savedUser = localStorage.getItem('health_user');
-            var savedBinId = localStorage.getItem('health_binId');
+        async function parseResponse(response, actionName) {
+            var rawText = await response.text();
 
-            if (savedUser && savedBinId) {
-                currentUser = savedUser;
-                currentViewingUser = savedUser;
-                targetUserBinId = savedBinId;
-
-                document.getElementById('login-overlay').style.display = 'none';
-                document.getElementById('main-system').style.display = 'flex';
-
-                document.getElementById('user-display').innerText = "目前登入：" + currentUser;
-
-                lockInterfaceForLoading();
-
-                if (HARDCODED_USERS[currentUser] && HARDCODED_USERS[currentUser].isAdmin) {
-                    loadAdminDataThenInit();
-                } else {
-                    initSystem();
-                }
+            if (!response.ok) {
+                throw new Error(
+                    actionName +
+                    "失敗（HTTP " +
+                    response.status +
+                    "）：" +
+                    rawText
+                );
             }
-        };
+
+            try {
+                return JSON.parse(rawText);
+            } catch (error) {
+                throw new Error(actionName + "回傳格式錯誤：" + rawText);
+            }
+        }
 
         function lockInterfaceForLoading() {
             isDataLoaded = false;
@@ -568,7 +558,7 @@
             document.getElementById('note-input').disabled = true;
             document.getElementById('photo-file-input').disabled = true;
 
-            document.getElementById('sync-status').innerText = "正在同步雲端...";
+            setSyncStatus("正在同步雲端...");
         }
 
         function unlockInterfaceAfterLoading() {
@@ -581,19 +571,36 @@
             document.getElementById('note-input').disabled = false;
             document.getElementById('photo-file-input').disabled = false;
 
-            document.getElementById('sync-status').innerText = "✅ 雲端同步完成";
+            setSyncStatus("✅ 雲端同步完成");
         }
+
+        function setButtonsSavingState(isBusy) {
+            document.getElementById('punch-btn-element').disabled = isBusy;
+            document.getElementById('save-note-btn-el').disabled = isBusy;
+            document.getElementById('photo-file-input').disabled = isBusy;
+        }
+
+        /*
+        ======================================================
+        登入與註冊
+        ======================================================
+        */
 
         function toggleAuthMode() {
             isRegisterMode = !isRegisterMode;
             clearLoginError();
 
-            document.getElementById('form-title').innerText = isRegisterMode ? "建立新帳號" : "登入";
-            document.getElementById('btn-main-submit').innerText = isRegisterMode ? "註冊" : "登入";
-            document.getElementById('switch-mode-btn').innerText = isRegisterMode ? "已有帳號？返回登入" : "還沒有帳號？免費註冊";
+            document.getElementById('form-title').innerText =
+                isRegisterMode ? "建立新帳號" : "登入";
+
+            document.getElementById('btn-main-submit').innerText =
+                isRegisterMode ? "註冊" : "登入";
+
+            document.getElementById('switch-mode-btn').innerText =
+                isRegisterMode ? "已有帳號？返回登入" : "還沒有帳號？免費註冊";
         }
 
-        function handleFormSubmit() {
+        async function handleFormSubmit() {
             clearLoginError();
 
             var userIn = document.getElementById('username').value.trim().toLowerCase();
@@ -615,72 +622,71 @@
                 return;
             }
 
-            fetch('https://api.jsonbin.io/v3/b/' + GLOBAL_REG_BIN + '/latest', {
-                method: 'GET',
-                headers: {
-                    'X-Master-Key': MASTER_KEY
-                }
-            })
-            .then(function (res) {
-                if (!res.ok) {
-                    throw new Error("無法讀取帳號資料庫");
-                }
+            try {
+                var response = await fetch(
+                    'https://api.jsonbin.io/v3/b/' + GLOBAL_REG_BIN + '/latest',
+                    {
+                        method: 'GET',
+                        headers: {
+                            'X-Master-Key': MASTER_KEY
+                        },
+                        cache: 'no-store'
+                    }
+                );
 
-                return res.json();
-            })
-            .then(function (data) {
+                var data = await parseResponse(response, "讀取帳號資料庫");
                 globalUsersDatabase = data.record || {};
 
                 if (isRegisterMode) {
                     if (globalUsersDatabase[userIn]) {
-                        showLoginError("帳號被佔用！");
+                        showLoginError("這個帳號已被使用！");
                         return;
                     }
 
-                    return fetch('https://api.jsonbin.io/v3/b', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-Master-Key': MASTER_KEY,
-                            'X-Bin-Private': 'true'
-                        },
-                        body: JSON.stringify({})
-                    })
-                    .then(function (res) {
-                        if (!res.ok) {
-                            throw new Error("建立個人雲端資料庫失敗");
+                    var createBinResponse = await fetch(
+                        'https://api.jsonbin.io/v3/b',
+                        {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-Master-Key': MASTER_KEY,
+                                'X-Bin-Private': 'true'
+                            },
+                            body: JSON.stringify({})
                         }
+                    );
 
-                        return res.json();
-                    })
-                    .then(function (newBin) {
-                        globalUsersDatabase[userIn] = {
-                            password: passIn,
-                            binId: newBin.metadata.id
-                        };
+                    var newBin = await parseResponse(createBinResponse, "建立個人雲端資料庫");
 
-                        return fetch('https://api.jsonbin.io/v3/b/' + GLOBAL_REG_BIN, {
+                    globalUsersDatabase[userIn] = {
+                        password: passIn,
+                        binId: newBin.metadata.id
+                    };
+
+                    var saveUserResponse = await fetch(
+                        'https://api.jsonbin.io/v3/b/' + GLOBAL_REG_BIN,
+                        {
                             method: 'PUT',
                             headers: {
                                 'Content-Type': 'application/json',
-                                'X-Master-Key': MASTER_KEY
+                                'X-Master-Key': MASTER_KEY,
+                                'X-Bin-Private': 'true'
                             },
                             body: JSON.stringify(globalUsersDatabase)
-                        });
-                    })
-                    .then(function (res) {
-                        if (!res.ok) {
-                            throw new Error("儲存新帳號失敗");
                         }
+                    );
 
-                        alert("註冊成功！請使用新帳號登入。");
+                    await parseResponse(saveUserResponse, "儲存新帳號");
 
-                        isRegisterMode = true;
+                    alert("註冊成功！請使用帳號登入。");
+
+                    if (isRegisterMode) {
                         toggleAuthMode();
+                    }
 
-                        document.getElementById('username').value = userIn;
-                        document.getElementById('password').value = "";
-                    });
+                    document.getElementById('username').value = userIn;
+                    document.getElementById('password').value = "";
+                    return;
                 }
 
                 if (
@@ -693,36 +699,55 @@
                 } else {
                     showLoginError("帳號或密碼錯誤");
                 }
-            })
-            .catch(function (err) {
-                console.error(err);
-                showLoginError("連線失敗，請檢查網路後再試。");
-            });
+            } catch (error) {
+                console.error(error);
+                showLoginError("登入連線失敗：" + error.message);
+            }
         }
 
-        function loadAdminDataThenInit() {
-            fetch('https://api.jsonbin.io/v3/b/' + GLOBAL_REG_BIN + '/latest', {
-                method: 'GET',
-                headers: {
-                    'X-Master-Key': MASTER_KEY
-                }
-            })
-            .then(function (res) {
-                if (!res.ok) {
-                    throw new Error("無法載入使用者清單");
-                }
+        function performLogout() {
+            localStorage.removeItem('health_user');
+            localStorage.removeItem('health_binId');
 
-                return res.json();
-            })
-            .then(function (data) {
+            currentUser = "";
+            currentViewingUser = "";
+            targetUserBinId = "";
+            appData = {};
+            isDataLoaded = false;
+
+            window.location.reload();
+        }
+
+        /*
+        ======================================================
+        管理員
+        ======================================================
+        */
+
+        async function loadAdminDataThenInit() {
+            try {
+                var response = await fetch(
+                    'https://api.jsonbin.io/v3/b/' + GLOBAL_REG_BIN + '/latest',
+                    {
+                        method: 'GET',
+                        headers: {
+                            'X-Master-Key': MASTER_KEY
+                        },
+                        cache: 'no-store'
+                    }
+                );
+
+                var data = await parseResponse(response, "載入管理員帳號清單");
+
                 globalUsersDatabase = data.record || {};
+
                 setupAdminConsole();
                 adminSwitchUserView();
-            })
-            .catch(function (err) {
-                console.error(err);
-                document.getElementById('sync-status').innerText = "❌ 無法載入管理員資料";
-            });
+            } catch (error) {
+                console.error(error);
+                setSyncStatus("❌ 管理員資料載入失敗");
+                alert("管理員資料載入失敗：" + error.message);
+            }
         }
 
         function setupAdminConsole() {
@@ -733,12 +758,22 @@
             box.style.display = 'block';
 
             Object.keys(HARDCODED_USERS).forEach(function (user) {
-                selector.innerHTML += '<option value="' + user + '">' + user + '（管理員）</option>';
+                selector.innerHTML +=
+                    '<option value="' +
+                    user +
+                    '">' +
+                    user +
+                    '（管理員）</option>';
             });
 
             Object.keys(globalUsersDatabase).forEach(function (user) {
                 if (!HARDCODED_USERS[user]) {
-                    selector.innerHTML += '<option value="' + user + '">' + user + '</option>';
+                    selector.innerHTML +=
+                        '<option value="' +
+                        user +
+                        '">' +
+                        user +
+                        '</option>';
                 }
             });
 
@@ -755,6 +790,7 @@
             } else if (globalUsersDatabase[currentViewingUser]) {
                 targetUserBinId = globalUsersDatabase[currentViewingUser].binId;
             } else {
+                alert("找不到此使用者的雲端資料庫。");
                 return;
             }
 
@@ -762,77 +798,59 @@
             lockInterfaceForLoading();
 
             document.getElementById('user-display').innerText =
-                "目前登入：" + currentUser + "｜正在查看：" + currentViewingUser;
+                "目前登入：" +
+                currentUser +
+                "｜查看資料：" +
+                currentViewingUser;
 
             initSystem();
         }
 
-        function performLogout() {
-            localStorage.removeItem('health_user');
-            localStorage.removeItem('health_binId');
+        /*
+        ======================================================
+        雲端讀取與儲存
+        ======================================================
+        */
 
-            currentUser = "";
-            currentViewingUser = "";
-            targetUserBinId = "";
-            appData = {};
-
-            window.location.reload();
-        }
-
-        function initSystem() {
-            if (clockInterval) {
-                clearInterval(clockInterval);
-            }
-
-            function updateClock() {
-                var now = new Date();
-                document.getElementById('clock-display').innerText = now.toTimeString().split(' ')[0];
-            }
-
-            updateClock();
-            clockInterval = setInterval(updateClock, 1000);
-
-            selectedDateStr = getLocalDateStr();
-            currentDate = new Date();
-
-            pullDataFromCloud();
-        }
-
-        function pullDataFromCloud() {
+        async function pullDataFromCloud() {
             if (!targetUserBinId) {
-                return;
+                throw new Error("找不到使用者 Bin ID");
             }
 
-            document.getElementById('sync-status').innerText = "正在從雲端讀取資料...";
+            setSyncStatus("⏳ 正在從雲端讀取資料...");
 
-            fetch('https://api.jsonbin.io/v3/b/' + targetUserBinId + '/latest', {
-                method: 'GET',
-                headers: {
-                    'X-Master-Key': MASTER_KEY
-                }
-            })
-            .then(function (res) {
-                if (!res.ok) {
-                    throw new Error("讀取雲端資料失敗");
-                }
+            try {
+                var response = await fetch(
+                    'https://api.jsonbin.io/v3/b/' + targetUserBinId + '/latest',
+                    {
+                        method: 'GET',
+                        headers: {
+                            'X-Master-Key': MASTER_KEY
+                        },
+                        cache: 'no-store'
+                    }
+                );
 
-                return res.json();
-            })
-            .then(function (data) {
+                var data = await parseResponse(response, "讀取雲端打卡資料");
+
                 appData = data.record || {};
 
                 unlockInterfaceAfterLoading();
 
                 renderCalendar();
                 selectDay(selectedDateStr);
-            })
-            .catch(function (err) {
-                console.error(err);
+            } catch (error) {
+                console.error(error);
 
-                document.getElementById('sync-status').innerText = "❌ 雲端讀取失敗，請重新整理";
+                isDataLoaded = false;
+                setSyncStatus("❌ 雲端讀取失敗");
 
-                alert("無法讀取雲端資料，請確認網路連線後重新整理頁面。");
-            });
+                alert(
+                    "無法讀取雲端資料。\n\n" +
+                    error.message +
+                    "\n\n請按 F12 → Console，把紅色錯誤截圖給我。"
+                );
+            }
         }
 
         function mergeCloudData(cloudData, localData) {
@@ -852,68 +870,166 @@
             return mergedData;
         }
 
-        function pushDataToCloud(callback) {
+        async function pushDataToCloud(callback) {
             if (!targetUserBinId || !isDataLoaded) {
+                alert("資料尚未讀取完成，請稍候再試。");
                 return;
             }
 
             if (isSaving) {
-                document.getElementById('sync-status').innerText = "⏳ 資料正在儲存中...";
+                alert("資料正在儲存中，請稍候。");
                 return;
             }
 
             isSaving = true;
+            setButtonsSavingState(true);
 
-            document.getElementById('sync-status').innerText = "正在同步雲端資料...";
+            try {
+                setSyncStatus("⏳ 正在取得雲端最新資料...");
 
-            fetch('https://api.jsonbin.io/v3/b/' + targetUserBinId + '/latest', {
-                method: 'GET',
-                headers: {
-                    'X-Master-Key': MASTER_KEY
-                }
-            })
-            .then(function (res) {
-                if (!res.ok) {
-                    throw new Error("無法取得雲端最新資料");
-                }
+                var getResponse = await fetch(
+                    'https://api.jsonbin.io/v3/b/' + targetUserBinId + '/latest',
+                    {
+                        method: 'GET',
+                        headers: {
+                            'X-Master-Key': MASTER_KEY
+                        },
+                        cache: 'no-store'
+                    }
+                );
 
-                return res.json();
-            })
-            .then(function (data) {
-                var cloudData = data.record || {};
+                var cloudResult = await parseResponse(getResponse, "取得雲端最新資料");
+                var cloudData = cloudResult.record || {};
 
                 appData = mergeCloudData(cloudData, appData);
 
-                return fetch('https://api.jsonbin.io/v3/b/' + targetUserBinId, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-Master-Key': MASTER_KEY
-                    },
-                    body: JSON.stringify(appData)
-                });
-            })
-            .then(function (res) {
-                if (!res.ok) {
-                    throw new Error("上傳雲端資料失敗");
-                }
+                setSyncStatus("⏳ 正在寫入雲端資料...");
 
-                isSaving = false;
-                document.getElementById('sync-status').innerText = "✅ 已同步到雲端";
+                var putResponse = await fetch(
+                    'https://api.jsonbin.io/v3/b/' + targetUserBinId,
+                    {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-Master-Key': MASTER_KEY,
+                            'X-Bin-Private': 'true'
+                        },
+                        body: JSON.stringify(appData)
+                    }
+                );
+
+                var saveResult = await parseResponse(putResponse, "寫入雲端資料");
+
+                console.log("JSONBin 寫入成功：", saveResult);
+
+                setSyncStatus("⏳ 正在驗證雲端資料...");
+
+                var verifyResponse = await fetch(
+                    'https://api.jsonbin.io/v3/b/' + targetUserBinId + '/latest',
+                    {
+                        method: 'GET',
+                        headers: {
+                            'X-Master-Key': MASTER_KEY
+                        },
+                        cache: 'no-store'
+                    }
+                );
+
+                var verifyResult = await parseResponse(verifyResponse, "驗證雲端資料");
+
+                appData = verifyResult.record || {};
+
+                console.log("雲端驗證成功，資料如下：", appData);
+
+                setSyncStatus("✅ 已確認資料成功儲存到雲端");
+
+                renderCalendar();
+                selectDay(selectedDateStr);
 
                 if (callback) {
                     callback();
                 }
-            })
-            .catch(function (err) {
-                console.error(err);
+            } catch (error) {
+                console.error("雲端儲存錯誤：", error);
 
+                setSyncStatus("❌ 儲存失敗");
+
+                alert(
+                    "資料沒有成功寫入雲端。\n\n" +
+                    error.message +
+                    "\n\n請按 F12 → Console，把紅色錯誤截圖給我。"
+                );
+            } finally {
                 isSaving = false;
-                document.getElementById('sync-status').innerText = "❌ 雲端同步失敗";
-
-                alert("資料同步失敗，請確認網路後重新整理頁面再試。");
-            });
+                setButtonsSavingState(false);
+            }
         }
+
+        /*
+        ======================================================
+        系統初始化
+        ======================================================
+        */
+
+        function startClock() {
+            if (clockInterval) {
+                clearInterval(clockInterval);
+            }
+
+            function updateClock() {
+                var now = new Date();
+                document.getElementById('clock-display').innerText =
+                    now.toTimeString().split(' ')[0];
+            }
+
+            updateClock();
+            clockInterval = setInterval(updateClock, 1000);
+        }
+
+        function initSystem() {
+            startClock();
+
+            selectedDateStr = getLocalDateStr();
+            currentDate = new Date();
+
+            pullDataFromCloud();
+        }
+
+        window.onload = function () {
+            var savedUser = localStorage.getItem('health_user');
+            var savedBinId = localStorage.getItem('health_binId');
+
+            if (!savedUser || !savedBinId) {
+                return;
+            }
+
+            currentUser = savedUser;
+            currentViewingUser = savedUser;
+            targetUserBinId = savedBinId;
+
+            document.getElementById('login-overlay').style.display = 'none';
+            document.getElementById('main-system').style.display = 'flex';
+
+            document.getElementById('user-display').innerText =
+                "目前登入：" + currentUser;
+
+            lockInterfaceForLoading();
+
+            if (
+                HARDCODED_USERS[currentUser] &&
+                HARDCODED_USERS[currentUser].isAdmin
+            ) {
+                loadAdminDataThenInit();
+            } else {
+                initSystem();
+            }
+        };
+
+        /*
+        ======================================================
+        打卡
+        ======================================================
+        */
 
         function performPunchIn() {
             if (!isDataLoaded || isSaving) {
@@ -927,16 +1043,24 @@
             }
 
             appData[todayStr].punch =
-                "🌟 乖寶寶 (" + new Date().toTimeString().substring(0, 5) + ")";
+                "🌟 乖寶寶（" +
+                new Date().toTimeString().substring(0, 5) +
+                "）";
+
+            selectedDateStr = todayStr;
+            currentDate = new Date();
 
             pushDataToCloud(function () {
-                currentDate = new Date();
-                selectedDateStr = todayStr;
-
                 renderCalendar();
                 selectDay(todayStr);
             });
         }
+
+        /*
+        ======================================================
+        月曆
+        ======================================================
+        */
 
         function renderCalendar() {
             var grid = document.getElementById('calendar-grid');
@@ -957,8 +1081,10 @@
 
             for (var day = 1; day <= totalDays; day++) {
                 var loopDateStr =
-                    year + "-" +
-                    String(month + 1).padStart(2, '0') + "-" +
+                    year +
+                    "-" +
+                    String(month + 1).padStart(2, '0') +
+                    "-" +
                     String(day).padStart(2, '0');
 
                 var dayDiv = document.createElement('div');
@@ -968,13 +1094,17 @@
                     dayDiv.classList.add('current-selected');
                 }
 
-                var status = "";
+                var statusHtml = "";
 
                 if (appData[loopDateStr] && appData[loopDateStr].punch) {
-                    status = "<div class='day-status'>🌟</div>";
+                    statusHtml = "<div class='day-status'>🌟</div>";
                 }
 
-                dayDiv.innerHTML = "<div>" + day + "</div>" + status;
+                dayDiv.innerHTML =
+                    "<div>" +
+                    day +
+                    "</div>" +
+                    statusHtml;
 
                 dayDiv.onclick = (function (dateStr) {
                     return function () {
@@ -995,17 +1125,14 @@
         function selectDay(dateStr) {
             selectedDateStr = dateStr;
 
-            document.querySelectorAll('.day').forEach(function (node) {
-                node.classList.remove('current-selected');
-            });
-
             document.getElementById('editor-date-title').innerText =
                 "📅 觀看／編輯 " + dateStr + " 紀錄";
 
             var historyZone = document.getElementById('day-punch-history');
 
             if (appData[dateStr] && appData[dateStr].punch) {
-                historyZone.innerText = "當日打卡：" + appData[dateStr].punch;
+                historyZone.innerText =
+                    "當日打卡：" + appData[dateStr].punch;
             } else {
                 historyZone.innerText = "當日無打卡紀錄";
             }
@@ -1014,10 +1141,7 @@
             var placeholderText = document.getElementById('photo-placeholder-text');
             var fileIn = document.getElementById('photo-file-input');
 
-            if (fileIn) {
-                fileIn.value = "";
-            }
-
+            fileIn.value = "";
             document.getElementById('img-upload-status').innerText = "";
 
             if (appData[dateStr] && appData[dateStr].image) {
@@ -1036,71 +1160,11 @@
                     : "";
         }
 
-        function handleImageUpload(event) {
-            if (!isDataLoaded || isSaving) {
-                return;
-            }
-
-            var file = event.target.files[0];
-
-            if (!file) {
-                return;
-            }
-
-            var statusEl = document.getElementById('img-upload-status');
-            statusEl.innerText = "⏳ 正在壓縮與上傳照片，請稍候...";
-
-            var reader = new FileReader();
-
-            reader.onload = function (eventResult) {
-                var img = new Image();
-
-                img.onload = function () {
-                    var canvas = document.createElement('canvas');
-                    var ctx = canvas.getContext('2d');
-
-                    var maxWidth = 500;
-                    var scaleSize = Math.min(maxWidth / img.width, 1);
-
-                    canvas.width = Math.round(img.width * scaleSize);
-                    canvas.height = Math.round(img.height * scaleSize);
-
-                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-                    var compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
-
-                    var imgEl = document.getElementById('food-img-element');
-                    imgEl.src = compressedBase64;
-                    imgEl.style.display = 'block';
-
-                    document.getElementById('photo-placeholder-text').style.display = 'none';
-
-                    if (!appData[selectedDateStr]) {
-                        appData[selectedDateStr] = {};
-                    }
-
-                    appData[selectedDateStr].image = compressedBase64;
-
-                    pushDataToCloud(function () {
-                        statusEl.innerText = "✅ 照片已成功備份至雲端！";
-                        renderCalendar();
-                        selectDay(selectedDateStr);
-                    });
-                };
-
-                img.onerror = function () {
-                    statusEl.innerText = "❌ 圖片讀取失敗，請換一張圖片再試。";
-                };
-
-                img.src = eventResult.target.result;
-            };
-
-            reader.onerror = function () {
-                statusEl.innerText = "❌ 圖片讀取失敗。";
-            };
-
-            reader.readAsDataURL(file);
-        }
+        /*
+        ======================================================
+        日記
+        ======================================================
+        */
 
         function saveDailyNote() {
             if (!isDataLoaded || isSaving) {
@@ -1115,11 +1179,89 @@
                 document.getElementById('note-input').value.trim();
 
             pushDataToCloud(function () {
-                alert("日記已同步儲存到雲端！");
-                renderCalendar();
-                selectDay(selectedDateStr);
+                alert("日記已成功同步到雲端！");
             });
         }
+
+        /*
+        ======================================================
+        照片
+        ======================================================
+        */
+
+        function handleImageUpload(event) {
+            if (!isDataLoaded || isSaving) {
+                return;
+            }
+
+            var file = event.target.files[0];
+
+            if (!file) {
+                return;
+            }
+
+            var statusEl = document.getElementById('img-upload-status');
+            statusEl.innerText = "⏳ 正在壓縮照片...";
+
+            var reader = new FileReader();
+
+            reader.onload = function (readerEvent) {
+                var img = new Image();
+
+                img.onload = function () {
+                    var canvas = document.createElement('canvas');
+                    var ctx = canvas.getContext('2d');
+
+                    var maxWidth = 500;
+                    var scale = Math.min(maxWidth / img.width, 1);
+
+                    canvas.width = Math.round(img.width * scale);
+                    canvas.height = Math.round(img.height * scale);
+
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+                    var compressedBase64 =
+                        canvas.toDataURL('image/jpeg', 0.7);
+
+                    var imgEl = document.getElementById('food-img-element');
+
+                    imgEl.src = compressedBase64;
+                    imgEl.style.display = 'block';
+
+                    document.getElementById('photo-placeholder-text').style.display = 'none';
+
+                    if (!appData[selectedDateStr]) {
+                        appData[selectedDateStr] = {};
+                    }
+
+                    appData[selectedDateStr].image = compressedBase64;
+
+                    statusEl.innerText = "⏳ 正在備份照片到雲端...";
+
+                    pushDataToCloud(function () {
+                        statusEl.innerText = "✅ 照片已成功備份到雲端！";
+                    });
+                };
+
+                img.onerror = function () {
+                    statusEl.innerText = "❌ 圖片讀取失敗，請換一張圖片。";
+                };
+
+                img.src = readerEvent.target.result;
+            };
+
+            reader.onerror = function () {
+                statusEl.innerText = "❌ 圖片檔案讀取失敗。";
+            };
+
+            reader.readAsDataURL(file);
+        }
+
+        /*
+        ======================================================
+        回到頁面時重新同步
+        ======================================================
+        */
 
         document.addEventListener('visibilitychange', function () {
             if (
@@ -1144,6 +1286,5 @@
             }
         });
     </script>
-
 </body>
 </html>
