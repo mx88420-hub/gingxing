@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>早睡早起身體好 - 雲端多用戶純淨版</title>
+    <title>早睡早起身體好 - 雲端安全鎖純淨版</title>
     <style>
         :root {
             --bg-color: #F6F8FA;
@@ -216,6 +216,7 @@
             transition: all 0.2s;
         }
         .btn-punch { background-color: var(--primary-pink); width: 100%; padding: 15px; font-size: 18px; box-shadow: 0 5px 15px rgba(255, 183, 178, 0.4); margin-bottom: 10px; }
+        .btn-punch:disabled { background-color: #CCCCCC !important; color: #666666 !important; box-shadow: none !important; cursor: not-allowed; }
         .btn-sync { background-color: var(--primary-blue); color: #5D5D5D; font-size: 13px; padding: 5px 15px; border-radius: 10px; margin-bottom: 15px; display: inline-block; }
         .btn:hover { transform: translateY(-2px); }
 
@@ -273,13 +274,17 @@
         
         textarea { width: 100%; height: 90px; border: 1px solid #DDD; border-radius: 10px; padding: 10px; box-sizing: border-box; resize: none; font-family: inherit; margin-bottom: 10px; }
         .save-btn { background-color: var(--primary-purple); padding: 8px 20px; font-size: 14px; float: right; }
+        .save-btn:disabled { background-color: #CCCCCC !important; color: #666666 !important; cursor: not-allowed; }
         .clear { clear: both; }
         .loading-text { font-size: 12px; color: #aaa; margin-top: 5px; }
         
-        .user-panel-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; font-size: 13px; }
-        .user-badge { color: #888; font-weight: bold; }
-        .btn-logout { background-color: #FFF; color: #FF9AA2; border: 1.5px solid #FF9AA2; padding: 4px 10px; font-size: 12px; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        .user-panel-top { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; margin-bottom: 15px; font-size: 13px; background: #FFF; padding: 10px; border-radius: 14px; border: 1px solid #E0E0E0; }
+        .user-panel-buttons { display: flex; gap: 8px; width: 100%; }
+        .user-badge { color: #5D5D5D; font-weight: bold; }
+        .btn-logout { flex: 1; background-color: #FFF; color: #FF9AA2; border: 1.5px solid #FF9AA2; padding: 5px 10px; font-size: 12px; border-radius: 8px; cursor: pointer; font-weight: bold; text-align: center; }
         .btn-logout:hover { background-color: #FF9AA2; color: white; }
+        .btn-danger-clear { color: #D32F2F; border-color: #D32F2F; }
+        .btn-danger-clear:hover { background-color: #D32F2F; color: white; }
     </style>
 </head>
 <body>
@@ -311,7 +316,10 @@
     <div class="left-panel">
         <div class="user-panel-top">
             <div class="user-badge" id="user-display">目前登入：--</div>
-            <button class="btn-logout" onclick="performLogout()">🔒 安全登出</button>
+            <div class="user-panel-buttons">
+                <button class="btn-logout" onclick="performLogout()">🔒 安全登出</button>
+                <button class="btn-logout btn-danger-clear" onclick="secureClearData()">🗑️ 清除所有紀錄</button>
+            </div>
         </div>
         
         <div id="admin-user-selector-box">
@@ -329,7 +337,7 @@
         
         <div class="slogan-box" id="slogan-display">加油！每天都是全新、更棒的自己！</div>
         
-        <button id="punch-btn-element" class="btn btn-punch" onclick="performPunchIn()">✨ 當日健康打卡 ✨</button>
+        <button id="punch-btn-element" class="btn btn-punch" disabled onclick="performPunchIn()">⏳ 正在載入雲端資料...</button>
         <div class="result-box" id="result-display"></div>
     </div>
     
@@ -357,7 +365,7 @@
             <div id="day-punch-history" style="font-size: 13px; color: #666; margin-bottom: 8px; font-weight: bold;"></div>
             
             <textarea id="note-input" placeholder="今天有什麼想分享的心情..."></textarea>
-            <button id="save-note-btn-el" class="btn save-btn" onclick="saveDailyNote()">儲存今日心情</button>
+            <button id="save-note-btn-el" class="btn save-btn" disabled onclick="saveDailyNote()">儲存今日心情</button>
             <div class="clear"></div>
         </div>
     </div>
@@ -380,6 +388,7 @@
     var currentDate = new Date(); 
     var selectedDateStr = ""; 
     var syncIntervalId = null;
+    var isDataLoaded = false; // ✨ 安全鎖：確保雲端下載完成前無法點擊任何儲存按鈕
 
     window.onload = function() {
         var savedUser = localStorage.getItem('health_user');
@@ -462,7 +471,6 @@
         submitBtn.disabled = true;
         var restoreButton = function() { submitBtn.innerText = originalText; submitBtn.disabled = false; };
 
-        // ✨ 修正重點：登入成功後，直接使用 window.location.reload() 刷新網頁，消除登入前後的電路落差
         if(!isRegisterMode && HARDCODED_USERS[userIn]) {
             if(HARDCODED_USERS[userIn].pass === passIn) {
                 localStorage.setItem('health_user', userIn);
@@ -542,16 +550,6 @@
             currentViewingUser = currentUser;
         }
         
-        if(currentViewingUser !== currentUser) {
-            document.getElementById('punch-btn-element').style.display = 'none';
-            document.getElementById('save-note-btn-el').style.display = 'none';
-            document.getElementById('note-input').readOnly = true;
-        } else {
-            document.getElementById('punch-btn-element').style.display = 'block';
-            document.getElementById('save-note-btn-el').style.display = 'block';
-            document.getElementById('note-input').readOnly = false;
-        }
-
         var noteIn = document.getElementById('note-input');
         if(noteIn) noteIn.value = "";
 
@@ -559,12 +557,47 @@
     }
 
     function performLogout() {
-        localStorage.clear();
+        localStorage.removeItem('health_user');
+        localStorage.removeItem('health_binId');
+        localStorage.removeItem('health_viewUser');
         if (syncIntervalId) clearInterval(syncIntervalId);
         window.location.reload();
     }
 
+    // ✨ 安全密碼清空機制
+    function secureClearData() {
+        var pw = prompt("⚠️ 警告：這將永久刪除 [" + currentViewingUser + "] 的所有打卡與日記紀錄！\n請輸入安全密碼以確認清除：");
+        if (pw === "0105") {
+            if (confirm("🔥 您確定要完全清空嗎？此操作無法復原！")) {
+                var syncStatusEl = document.getElementById('sync-status');
+                if(syncStatusEl) syncStatusEl.innerText = "⏳ 正在雲端徹底銷毀紀錄...";
+                
+                appData = { greeting: "Reset Clean" }; // 歸零資料庫
+                
+                fetch('https://api.jsonbin.io/v3/b/' + targetUserBinId, {
+                    method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Master-Key': MASTER_KEY },
+                    body: JSON.stringify(appData)
+                })
+                .then(function() {
+                    alert("🗑️ 所有歷史紀錄已成功徹底刪除！");
+                    window.location.reload();
+                })
+                .catch(function(err) {
+                    alert("❌ 清除失敗，連線異常。");
+                    pullDataFromCloud();
+                });
+            }
+        } else if (pw !== null) {
+            alert("❌ 安全密碼錯誤！資料受到安全保護，未被刪除。");
+        }
+    }
+
     function initSystem() {
+        isDataLoaded = false; // 開始重新載入，鎖定按鈕
+        document.getElementById('punch-btn-element').disabled = true;
+        document.getElementById('punch-btn-element').innerText = "⏳ 正在同步雲端資料...";
+        document.getElementById('save-note-btn-el').disabled = true;
+
         if(window.clockIntervalId) clearInterval(window.clockIntervalId);
         updateClock();
         window.clockIntervalId = setInterval(updateClock, 1000);
@@ -608,22 +641,41 @@
         if (!targetUserBinId) return;
         var syncStatusEl = document.getElementById('sync-status');
         if(syncStatusEl) syncStatusEl.innerText = "⏳ 讀取 [" + currentViewingUser + "] 的獨立雲端盒...";
+        
         fetch('https://api.jsonbin.io/v3/b/' + targetUserBinId + '/latest', {
             method: 'GET', headers: { 'X-Master-Key': MASTER_KEY }
         })
         .then(function(res) { return res.json(); })
         .then(function(data) {
             appData = data.record || {};
+            isDataLoaded = true; // ✨ 雲端下載完畢，解鎖安全限制
+
+            // 依據目前檢視權限與加載狀態控制按鈕
+            if(currentViewingUser !== currentUser) {
+                document.getElementById('punch-btn-element').style.display = 'none';
+                document.getElementById('save-note-btn-el').style.display = 'none';
+                document.getElementById('note-input').readOnly = true;
+            } else {
+                document.getElementById('punch-btn-element').style.display = 'block';
+                document.getElementById('punch-btn-element').disabled = false;
+                document.getElementById('punch-btn-element').innerText = "✨ 當日健康打卡 ✨";
+                document.getElementById('save-note-btn-el').style.display = 'block';
+                document.getElementById('save-note-btn-el').disabled = false;
+                document.getElementById('note-input').readOnly = false;
+            }
+
             renderCalendar();
             renderRightHistoryPanel(); 
             selectDay(selectedDateStr);
             if(syncStatusEl) syncStatusEl.innerText = "✅ 已即時同步 [" + currentViewingUser + "] 的紀錄";
         })
-        .catch(function(err) { if(syncStatusEl) syncStatusEl.innerText = "❌ 雲端讀取異常"; });
+        .catch(function(err) { 
+            if(syncStatusEl) syncStatusEl.innerText = "❌ 雲端讀取異常，請重新整理網頁"; 
+        });
     }
 
     function pushDataToCloud() {
-        if (!targetUserBinId) return;
+        if (!targetUserBinId || !isDataLoaded) return; // ✨ 安全鎖：未完全載入前，絕對不允許寫回雲端
         fetch('https://api.jsonbin.io/v3/b/' + targetUserBinId, {
             method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Master-Key': MASTER_KEY },
             body: JSON.stringify(appData)
@@ -662,6 +714,7 @@
     }
 
     function performPunchIn() {
+        if(!isDataLoaded) return;
         var now = new Date();
         var todayStr = formatDateKey(now);
         
@@ -770,6 +823,7 @@
     }
 
     function saveDailyNote() {
+        if(!isDataLoaded) return;
         var text = document.getElementById('note-input').value.trim();
         if (!appData[selectedDateStr]) appData[selectedDateStr] = {};
         appData[selectedDateStr].note = text;
