@@ -218,7 +218,6 @@
         .btn-punch { background-color: var(--primary-pink); width: 100%; padding: 15px; font-size: 18px; box-shadow: 0 5px 15px rgba(255, 183, 178, 0.4); margin-bottom: 10px; }
         .btn-sync { background-color: var(--primary-blue); color: #5D5D5D; font-size: 13px; padding: 5px 15px; border-radius: 10px; margin-bottom: 15px; display: inline-block; }
         .btn:hover { transform: translateY(-2px); }
-        .btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
 
         .result-box { margin-top: 15px; padding: 12px; border-radius: 12px; font-size: 18px; font-weight: bold; display: none; }
         .good-baby { background-color: #E8F5E9; color: #2E7D32; border: 2px dashed #A5D6A7; }
@@ -352,7 +351,7 @@
 
         <div class="tag-title">早睡早起身體好</div>
         <div>
-            <button class="btn btn-sync" onclick="pullDataFromCloud(false)">🔄 點擊刷新同步雲端</button>
+            <button class="btn btn-sync" onclick="pullDataFromCloud()">🔄 點擊刷新同步雲端</button>
             <div id="sync-status" class="loading-text">正在同步雲端...</div>
         </div>
         <div id="live-date" style="font-size: 16px; color: #888;">2026年--月--日</div>
@@ -492,6 +491,7 @@
         submitBtn.disabled = true;
         var restoreButton = function() { submitBtn.innerText = originalText; submitBtn.disabled = false; };
 
+        // 🎯 固定的內建帳號登入
         if(!isRegisterMode && HARDCODED_USERS[userIn]) {
             if(HARDCODED_USERS[userIn].pass === passIn) {
                 currentUser = userIn;
@@ -521,6 +521,7 @@
 
         if(!/^[a-z0-9]+$/.test(userIn)) { showError("❌ 帳號僅能使用英文小寫與數字喔！"); restoreButton(); return; }
 
+        // 🎯 雲端註冊帳號登入
         fetch('https://api.jsonbin.io/v3/b/' + GLOBAL_REG_BIN + '/latest', {
             method: 'GET', headers: { 'X-Master-Key': MASTER_KEY }
         })
@@ -613,7 +614,7 @@
         var noteIn = document.getElementById('note-input');
         if(noteIn) noteIn.value = "";
 
-        pullDataFromCloud(false);
+        pullDataFromCloud();
     }
 
     function performLogout() {
@@ -628,12 +629,9 @@
         window.clockIntervalId = setInterval(updateClock, 1000);
         selectedDateStr = formatDateKey(new Date());
         
-        pullDataFromCloud(false);
+        pullDataFromCloud();
         if (syncIntervalId) clearInterval(syncIntervalId);
-        // 💡 修改點：每 30 秒的定時更新設定為背景標記 (true)，不清除使用者當下正在輸入的欄位
-        syncIntervalId = setInterval(function() {
-            pullDataFromCloud(true);
-        }, 30000);
+        syncIntervalId = setInterval(pullDataFromCloud, 30000);
     }
 
     var slogans = [
@@ -646,6 +644,66 @@
         var m = String(date.getMonth() + 1).padStart(2, '0');
         var d = String(date.getDate()).padStart(2, '0');
         return y + '-' + m + '-' + d;
+    }
+
+    // 🕒 雲端讀取資料優化處理
+    function pullDataFromCloud() {
+        if (!targetUserBinId) return;
+        var syncStatusEl = document.getElementById('sync-status');
+        if(syncStatusEl) syncStatusEl.innerText = "⏳ 讀取 [" + currentViewingUser + "] 的獨立雲端盒...";
+        
+        fetch('https://api.jsonbin.io/v3/b/' + targetUserBinId + '/latest', {
+            method: 'GET', headers: { 'X-Master-Key': MASTER_KEY }
+        })
+        .then(function(res) { 
+            // 🌟 核心修正：如果雲端回傳錯誤（401/404 等），主動拋出錯誤跳入 catch 避免覆蓋本地資料
+            if (!res.ok) {
+                throw new Error("伺服器回應異常 (狀態碼: " + res.status + ")");
+            }
+            return res.json(); 
+        })
+        .then(function(data) {
+            // 🌟 核心修正：安全檢查，確保真的有 record 資料欄位
+            if (!data || !data.record) {
+                throw new Error("雲端回傳格式不正確");
+            }
+            appData = data.record || {};
+            renderCalendar();
+            renderRightHistoryPanel(); 
+            selectDay(selectedDateStr);
+            if(syncStatusEl) syncStatusEl.innerText = "✅ 已即時同步 [" + currentViewingUser + "] 的紀錄";
+        })
+        .catch(function(err) { 
+            console.error(err);
+            if(syncStatusEl) syncStatusEl.innerText = "❌ 雲端讀取異常：" + err.message; 
+        });
+    }
+
+    // 💾 雲端儲存資料優化處理
+    function pushDataToCloud() {
+        if (!targetUserBinId) return;
+        var syncStatusEl = document.getElementById('sync-status');
+        if(syncStatusEl) syncStatusEl.innerText = "⏳ 正在同步至雲端...";
+
+        fetch('https://api.jsonbin.io/v3/b/' + targetUserBinId, {
+            method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Master-Key': MASTER_KEY },
+            body: JSON.stringify(appData)
+        })
+        .then(function(res) {
+            // 🌟 核心修正：確認伺服器有真正寫入成功
+            if (!res.ok) {
+                throw new Error("資料寫入失敗 (狀態碼: " + res.status + ")");
+            }
+            return res.json();
+        })
+        .then(function() {
+            if(syncStatusEl) syncStatusEl.innerText = "✅ 變更已安全儲存";
+        })
+        .catch(function(err) { 
+            console.error(err);
+            if(syncStatusEl) syncStatusEl.innerText = "❌ 儲存失敗：" + err.message;
+            alert("⚠️ 雲端儲存失敗！請檢查您的 MASTER_KEY 金鑰、網路連線或資料盒 ID 是否被刪除。");
+        });
     }
 
     function updateClock() {
@@ -689,52 +747,6 @@
         }
     }
 
-    function pullDataFromCloud(isBackground) {
-        if (!targetUserBinId) return;
-        var syncStatusEl = document.getElementById('sync-status');
-        if(syncStatusEl && !isBackground) syncStatusEl.innerText = "⏳ 讀取 [" + currentViewingUser + "] 的獨立雲端盒...";
-        
-        fetch('https://api.jsonbin.io/v3/b/' + targetUserBinId + '/latest', {
-            method: 'GET', headers: { 'X-Master-Key': MASTER_KEY }
-        })
-        .then(function(res) { 
-            if (!res.ok) throw new Error("雲端讀取異常");
-            return res.json(); 
-        })
-        .then(function(data) {
-            appData = data.record || {};
-            renderCalendar();
-            renderRightHistoryPanel(); 
-            
-            // 💡 修改點：如果是背景定時更新，不要執行 selectDay()，以免蓋掉輸入一半的文字/照片
-            if (!isBackground) {
-                selectDay(selectedDateStr);
-            }
-            if(syncStatusEl) syncStatusEl.innerText = "✅ 已即時同步 [" + currentViewingUser + "] 的紀錄";
-        })
-        .catch(function(err) { if(syncStatusEl) syncStatusEl.innerText = "❌ 雲端讀取異常"; });
-    }
-
-    // 💡 修改點：優化雲端發送函式，會主動回傳 Promise 並嚴格檢驗 res.ok 狀態防止 Silent Fail
-    function pushDataToCloud() {
-        if (!targetUserBinId) return Promise.reject("未登入或 BinID 缺失");
-        return fetch('https://api.jsonbin.io/v3/b/' + targetUserBinId, {
-            method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Master-Key': MASTER_KEY },
-            body: JSON.stringify(appData)
-        })
-        .then(function(res) {
-            if (!res.ok) {
-                throw new Error("伺服器拒絕儲存，狀態碼：" + res.status);
-            }
-            return res.json();
-        })
-        .then(function(data) {
-            var syncStatusEl = document.getElementById('sync-status');
-            if(syncStatusEl) syncStatusEl.innerText = "✅ 變更已安全儲存";
-            return data;
-        });
-    }
-
     function renderRightHistoryPanel() {
         var container = document.getElementById('history-items-list');
         var badge = document.getElementById('history-user-badge');
@@ -762,7 +774,6 @@
         });
     }
 
-    // 💡 修改點：將傳輸異步化，確保成功送達才變更畫面與跳 Alert
     function performPunchIn() {
         var now = new Date();
         var todayStr = formatDateKey(now);
@@ -786,38 +797,21 @@
             statusText = "你在 " + hour + ":" + minute + " 打卡！時間維持得很棒！";
         }
 
-        var punchBtn = document.getElementById('punch-btn-element');
-        var originalText = punchBtn.innerText;
-        punchBtn.disabled = true;
-        punchBtn.innerText = "打卡傳輸中...";
+        var resultBox = document.getElementById('result-display');
+        if(resultBox) {
+            resultBox.className = "result-box " + statusClass;
+            resultBox.innerHTML = "<div>" + statusSymbol + "</div><div style='font-size:13px; font-weight:normal; margin-top:4px;'>" + statusText + "</div>";
+            resultBox.style.display = 'block';
+        }
 
         if (!appData[todayStr]) appData[todayStr] = {};
-        var backupOldPunch = appData[todayStr].punch;
         appData[todayStr].punch = statusSymbol + " (" + hour + ":" + minute + ")";
         
-        pushDataToCloud()
-        .then(function() {
-            var resultBox = document.getElementById('result-display');
-            if(resultBox) {
-                resultBox.className = "result-box " + statusClass;
-                resultBox.innerHTML = "<div>" + statusSymbol + "</div><div style='font-size:13px; font-weight:normal; margin-top:4px;'>" + statusText + "</div>";
-                resultBox.style.display = 'block';
-            }
-            renderCalendar();
-            renderRightHistoryPanel(); 
-            selectDay(todayStr);
-            setRandomSlogan();
-            alert("打卡成功！✨");
-        })
-        .catch(function(err) {
-            console.error(err);
-            alert("❌ 打卡上傳雲端失敗，請確認網路連線是否正常！");
-            if(backupOldPunch) appData[todayStr].punch = backupOldPunch; else delete appData[todayStr].punch;
-        })
-        .finally(function() {
-            punchBtn.disabled = false;
-            punchBtn.innerText = originalText;
-        });
+        pushDataToCloud();
+        renderCalendar();
+        renderRightHistoryPanel(); 
+        selectDay(todayStr);
+        setRandomSlogan();
     }
 
     function renderCalendar() {
@@ -904,38 +898,14 @@
         if(fileIn) { try { fileIn.value = ""; } catch(e) {} }
     }
 
-    // 💡 修改點：重構儲存函式，利用 .then / .catch 確保雲端寫入完成才發出成功通知與防連點
     function saveDailyNote() {
-        var saveBtn = document.getElementById('save-note-btn-el');
-        var originalText = saveBtn.innerText;
-        saveBtn.disabled = true;
-        saveBtn.innerText = "儲存中...";
-
         var text = document.getElementById('note-input').value.trim();
         if (!appData[selectedDateStr]) appData[selectedDateStr] = {};
-        
-        var backupNote = appData[selectedDateStr].note;
-        var backupImage = appData[selectedDateStr].image;
-
         appData[selectedDateStr].note = text;
         appData[selectedDateStr].image = base64ImageStr; 
-        
-        pushDataToCloud()
-        .then(function() {
-            renderCalendar(); 
-            alert("今日美食與心情日記儲存成功囉！🌸");
-        })
-        .catch(function(err) {
-            console.error(err);
-            alert("❌ 儲存失敗！可能原因：\n1. 照片解析度過大（超出雲端單筆資料上限限制）。請嘗試不放照片或壓縮小圖後重試。\n2. 網路連線瞬斷。");
-            // 復原快取
-            appData[selectedDateStr].note = backupNote;
-            appData[selectedDateStr].image = backupImage;
-        })
-        .finally(function() {
-            saveBtn.disabled = false;
-            saveBtn.innerText = originalText;
-        });
+        pushDataToCloud();
+        renderCalendar(); 
+        alert("今日美食與心情日記儲存成功囉！🌸");
     }
 </script>
 </body>
