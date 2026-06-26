@@ -2,118 +2,354 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>早睡早起健康平台</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>早睡打卡系統</title>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #F0F2F5; padding: 20px; }
-        .page { max-width: 900px; margin: auto; display: none; }
-        .auth-container { max-width: 400px; margin: 100px auto; background: white; padding: 40px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); text-align: center; }
-        .panel { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        .btn { width: 100%; padding: 12px; border: none; border-radius: 8px; color: white; cursor: pointer; margin-top: 10px; }
-        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; margin-top: 15px; }
-        .day { aspect-ratio: 1; border: 1px solid #eee; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 10px; border-radius: 5px; }
-        .status-乖寶寶 { background: #C8E6C9; color: #2e7d32; }
-        .status-壞寶寶 { background: #FFCDD2; color: #c62828; }
+        :root {
+            --bg-color: #F4F1DE; 
+            --card-bg: #FFFFFF;
+            --primary: #81B29A;
+            --secondary: #E07A5F;
+            --text-main: #3D405B;
+            --border: #F2CC8F;
+        }
+
+        body { font-family: 'Helvetica Neue', Arial, 'Noto Sans TC', sans-serif; background-color: var(--bg-color); color: var(--text-main); margin: 0; padding: 20px; transition: background 0.3s, color 0.3s; min-height: 100vh; display: flex; justify-content: center; align-items: flex-start; }
+        .hidden { display: none !important; }
+        
+        .overlay { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 1000; }
+        .modal-box { background: var(--card-bg); padding: 35px; border-radius: 24px; box-shadow: 0 15px 35px rgba(0,0,0,0.1); width: 340px; text-align: center; border: 4px solid var(--primary); box-sizing: border-box; }
+        input[type="text"], input[type="password"] { width: 100%; padding: 12px; margin: 10px 0; border-radius: 12px; border: 2px solid #ddd; font-size: 15px; box-sizing: border-box; outline: none; transition: border 0.3s; }
+        input:focus { border-color: var(--primary); }
+        button { background: var(--primary); color: white; border: none; padding: 14px 20px; border-radius: 50px; cursor: pointer; font-weight: bold; width: 100%; margin-top: 15px; font-size: 16px; transition: all 0.2s; }
+        button:hover { opacity: 0.9; transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+        button:disabled { cursor: not-allowed; opacity: 0.6; transform: none; box-shadow: none; }
+        .btn-alt { background: var(--secondary); margin-top: 10px; }
+
+        .layout { display: flex; gap: 25px; max-width: 1100px; width: 100%; flex-wrap: wrap; }
+        .col { background: var(--card-bg); padding: 25px; border-radius: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.03); border: 3px solid var(--border); box-sizing: border-box; }
+        .col-1 { flex: 1; min-width: 280px; }
+        .col-2 { flex: 1.5; min-width: 360px; }
+        .col-3 { flex: 1; min-width: 280px; }
+
+        .clock { font-size: 36px; font-weight: bold; color: var(--primary); margin: 15px 0; font-family: monospace; text-align: center; background: rgba(0,0,0,0.03); border-radius: 15px; padding: 10px; }
+        .quote { background: rgba(0,0,0,0.02); padding: 15px; border-left: 5px solid var(--secondary); margin: 20px 0; font-size: 14px; border-radius: 8px; line-height: 1.6; }
+        .stats { display: flex; justify-content: space-around; font-weight: bold; font-size: 16px; margin-top: 20px; background: rgba(0,0,0,0.02); padding: 15px; border-radius: 15px;}
+        .good-txt { color: #52b788; } .bad-txt { color: #e07a5f; }
+        
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; text-align: center; margin-top: 15px; }
+        .weekday { font-weight: bold; color: #888; font-size: 13px; padding-bottom: 5px; }
+        .day { padding: 5px; background: rgba(0,0,0,0.03); border-radius: 10px; cursor: pointer; position: relative; aspect-ratio: 1; display: flex; justify-content: center; align-items: center; font-size: 14px; font-weight: bold; transition: background 0.2s; }
+        .day:hover { background: var(--primary); color: white; }
+        .stamp { position: absolute; bottom: 2px; right: 2px; font-size: 10px; font-weight: bold; border-radius: 50%; background: white; padding: 2px; line-height: 1; }
+
+        .theme-selector { display: flex; gap: 12px; margin-top: 15px; justify-content: center; }
+        .color-dot { width: 30px; height: 30px; border-radius: 50%; cursor: pointer; border: 3px solid #fff; box-shadow: 0 4px 8px rgba(0,0,0,0.15); transition: 0.2s; }
+        .color-dot:hover { transform: scale(1.15); }
+
+        .admin-list { margin-top: 15px; max-height: 350px; overflow-y: auto; font-size: 13px; text-align: left; }
+        .record-item { border-bottom: 1px dashed #ddd; padding: 10px 0; line-height: 1.5; }
+        .record-item:last-child { border-bottom: none; }
     </style>
 </head>
 <body>
 
-<div id="auth-page" class="auth-container">
-    <h2 id="auth-title">平台登入</h2>
-    <input type="text" id="username" placeholder="帳號">
-    <input type="password" id="password" placeholder="密碼">
-    <button class="btn" style="background:#6C63FF;" onclick="handleAuth()">確認</button>
-    <p id="toggle-text" style="cursor:pointer; color:blue;" onclick="toggleAuth()">沒有帳號？點此註冊</p>
-</div>
-
-<div id="main-page" class="page">
-    <div class="container" style="display: grid; grid-template-columns: 250px 1fr; gap: 20px;">
-        <div class="panel">
-            <h3>個人資料</h3>
-            <p id="user-display"></p>
-            <button onclick="localStorage.clear(); location.reload();">登出</button>
-            <hr>
-            <p id="motto" style="font-size: 14px; color: #555;"></p>
-        </div>
-        <div class="panel">
-            <h2 id="calendar-title">2026年 6月</h2>
-            <div id="calendar-grid" class="calendar-grid"></div>
-            <hr>
-            <h3>日記與打卡</h3>
-            <button class="btn" style="background:#6C63FF;" onclick="punch()">睡覺打卡</button>
-            <textarea id="note" style="width:100%; height:60px; box-sizing:border-box;" placeholder="記錄今日心情..."></textarea>
-            <button class="btn" style="background:#FF8A65;" onclick="saveNote()">儲存心情</button>
+    <div id="login-overlay" class="overlay">
+        <div class="modal-box">
+            <h2 style="color: var(--primary); margin-top:0; margin-bottom: 25px;">早睡打卡系統</h2>
+            <div style="text-align: left;">
+                <label style="font-size: 12px; font-weight: bold; color: #888; margin-left: 5px;">用戶名稱 (帳號)</label>
+                <input type="text" id="username" placeholder="請輸入帳號">
+                <label style="font-size: 12px; font-weight: bold; color: #888; margin-left: 5px;">密碼</label>
+                <input type="password" id="password" placeholder="請輸入密碼">
+            </div>
+            <button onclick="handleLogin()">登入</button>
+            <button class="btn-alt" onclick="handleRegister()">註冊新帳號</button>
+            <p id="auth-msg" style="color: var(--secondary); font-size: 14px; font-weight:bold; margin-top:15px; min-height: 20px;"></p>
         </div>
     </div>
-</div>
 
-<script>
-    // 【重要】請務必將此處替換為你最新的 /exec 網址
-    var GAS_URL = "填入你的部署網址"; 
-    let isLoginMode = true;
+    <div id="nickname-overlay" class="overlay hidden">
+        <div class="modal-box">
+            <h2 style="color: var(--primary); margin-top:0;">🎉 註冊成功！</h2>
+            <p style="font-size:14px; color:gray; margin-bottom: 20px;">請設定您在系統中的公開暱稱：</p>
+            <input type="text" id="nickname" placeholder="想讓大家怎麼稱呼你？">
+            <button onclick="saveNickname()">完成並進入系統</button>
+        </div>
+    </div>
 
-    function toggleAuth() {
-        isLoginMode = !isLoginMode;
-        document.getElementById('auth-title').innerText = isLoginMode ? "平台登入" : "平台註冊";
-        document.getElementById('toggle-text').innerText = isLoginMode ? "沒有帳號？點此註冊" : "已有帳號？點此登入";
-    }
+    <div id="main-app" class="layout hidden">
+        
+        <div class="col col-1">
+            <h2 id="user-display" style="margin-top:0; color:var(--text-main); text-align: center;">用戶名稱</h2>
+            <p style="color: gray; font-size: 13px; text-align: center;">登入狀態：<span id="login-status" style="color:#52b788; font-weight:bold;">已登入線上</span></p>
+            <div class="clock" id="real-time-clock">00:00:00</div>
+            <div class="quote" id="random-quote">正在為您注入每日正能量...</div>
+            
+            <div class="stats">
+                <div style="text-align: center;">
+                    <div style="font-size: 24px;">😇</div>
+                    <span class="good-txt">乖寶寶: <span id="count-good">0</span></span>
+                </div>
+                <div style="text-align: center;">
+                    <div style="font-size: 24px;">😈</div>
+                    <span class="bad-txt">壞寶寶: <span id="count-bad">0</span></span>
+                </div>
+            </div>
+            
+            <div style="margin-top: 30px; border-top: 2px dashed #eee; padding-top: 20px; text-align: center;">
+                <p style="font-size: 14px; margin-bottom:15px; font-weight:bold; color: #888;">🎨 更換網頁主題配色</p>
+                <div class="theme-selector">
+                    <div class="color-dot" style="background:#F4F1DE" onclick="changeTheme('#F4F1DE', '#FFFFFF', '#81B29A', '#E07A5F', '#3D405B', '#F2CC8F')"></div>
+                    <div class="color-dot" style="background:#E2E2DF" onclick="changeTheme('#E2E2DF', '#FFFFFF', '#9A9A96', '#E2CFC4', '#46494C', '#C1C1C1')"></div>
+                    <div class="color-dot" style="background:#FDE2E4" onclick="changeTheme('#FDE2E4', '#FFF', '#FFCAD4', '#B5E2FA', '#4A5568', '#FFCAD4')"></div>
+                    <div class="color-dot" style="background:#B5E2FA" onclick="changeTheme('#B5E2FA', '#FFF', '#0FA3B1', '#F9F7F3', '#0C3866', '#EDDEA4')"></div>
+                    <div class="color-dot" style="background:#DCD6F7" onclick="changeTheme('#DCD6F7', '#FFF', '#A6B1E1', '#F4EEFF', '#424874', '#B8B5ff')"></div>
+                </div>
+            </div>
+            <button class="btn-alt" onclick="logout()" style="margin-top: 30px;">登出系統</button>
+        </div>
 
-    async function handleAuth() {
-        let u = document.getElementById('username').value;
-        let p = document.getElementById('password').value;
-        let res = await fetch(GAS_URL, { 
-            method: "POST", 
-            body: JSON.stringify({ action: isLoginMode ? "login" : "register", username: u, password: p }) 
-        });
-        let result = await res.text();
-        if(result.includes("Success")) {
-            localStorage.setItem('current_user', u);
-            location.reload();
-        } else { alert("失敗：帳號已存在或密碼錯誤"); }
-    }
+        <div class="col col-2">
+            <h3 style="text-align:center; margin-top:0; letter-spacing:1px; color: var(--primary);" id="calendar-title">📅 本月行事曆</h3>
+            <div class="calendar-grid">
+                <div class="weekday">日</div><div class="weekday">一</div><div class="weekday">二</div>
+                <div class="weekday">三</div><div class="weekday">四</div><div class="weekday">五</div><div class="weekday">六</div>
+            </div>
+            <div class="calendar-grid" id="calendar"></div>
+            
+            <hr style="border: 0; border-top: 2px dashed #eee; margin: 25px 0;">
+            
+            <h3 style="text-align:center; margin-top:0; color: var(--primary);">🕒 睡眠時間打卡</h3>
+            <p style="font-size: 13px; text-align:center; color: #888; margin-bottom:15px; font-weight: bold;">
+                【打卡規則】中午 12:00 ~ 凌晨 02:00 (乖寶寶) ｜ 其餘時間 (壞寶寶)
+            </p>
+            <input type="text" id="punch-mood" placeholder="今天心情如何？寫點文字吧... (選填)" style="margin-bottom: 15px;">
+            <button id="btn-punch" onclick="doPunch()" style="font-size: 18px; padding: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.1);">立即打卡</button>
+            <div id="punch-msg-container" style="text-align:center; margin-top:15px; min-height: 24px;">
+                <p id="punch-msg" style="font-weight:bold; color: var(--primary); margin:0;"></p>
+            </div>
+        </div>
 
-    async function punch() {
-        let u = localStorage.getItem('current_user');
-        let res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "punch", user: u, date: new Date().getDate() }) });
-        alert("打卡結果：" + await res.text());
-        location.reload();
-    }
+        <div class="col col-3">
+            <h3 style="margin-top:0; color: var(--primary);">📌 最新紀錄與公告</h3>
+            <div style="background: rgba(0,0,0,0.03); padding: 15px; border-radius: 12px; font-size: 14px;">
+                <strong>⏱️ 您的最後打卡：</strong><br>
+                <span id="last-punch-time" style="color:#666; display:inline-block; margin-top:8px; font-weight: bold;">尚無今日紀錄</span>
+            </div>
+            
+            <div style="margin-top: 20px; background: #fffde7; padding: 15px; border-radius: 12px; border-left: 5px solid #fbc02d; min-height: 120px; box-sizing:border-box;">
+                <strong style="color:#f57f17;">🔊 管理員公告：</strong>
+                <p id="admin-announcement" style="font-size: 14px; margin-top:10px; color:#555; line-height:1.6; white-space: pre-wrap;"></p>
+            </div>
 
-    async function saveNote() {
-        let u = localStorage.getItem('current_user');
-        let note = document.getElementById('note').value;
-        await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "saveNote", note: note, user: u, date: new Date().getDate() }) });
-        alert("心情已儲存");
-        location.reload();
-    }
+            <div id="admin-panel" class="hidden" style="margin-top: 25px; border-top: 3px solid var(--secondary); padding-top: 20px;">
+                <h3 style="color:var(--secondary); margin-top:0;">👑 後台監控 (管理員)</h3>
+                <div id="all-records" class="admin-list"></div>
+            </div>
+        </div>
+    </div>
 
-    async function init() {
-        let u = localStorage.getItem('current_user');
-        if(!u) return;
-
-        document.getElementById('auth-page').style.display = 'none';
-        document.getElementById('main-page').style.display = 'block';
-        document.getElementById('user-display').innerText = "使用者: " + u;
-
-        // 標語
-        const mottos = ["今天也要加油！", "為什麼生活這麼難...", "乖寶寶有好夢", "熬夜會變笨喔！"];
-        document.getElementById('motto').innerText = mottos[Math.floor(Math.random() * mottos.length)];
-
-        // 載入日曆
-        let res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ action: "getData" }) });
-        let data = await res.json();
-        let grid = document.getElementById('calendar-grid');
-        for(let i=1; i<=30; i++) {
-            let div = document.createElement('div');
-            div.className = 'day'; div.innerText = i;
-            let record = data.find(row => row[2] == i && row[1] == u);
-            if(record) {
-                if(record[3]) div.classList.add('status-' + record[3]);
-                if(record[4]) div.innerText += " (" + record[4].substring(0,2) + ")";
-            }
-            grid.appendChild(div);
+    <script>
+        let currentUser = {};
+        let currentRecords = [];
+        
+        const quotes = [
+            "新的一天，從早睡早起開始，跟熊貓眼說掰掰！🐼",
+            "今天的熬夜，都是明天在精神上還的債。早點睡吧！",
+            "肝若不好，人生是黑白的；早點休息，明天又是元氣滿滿！💪",
+            "你是最棒的！今天也請在對的時間閉上眼睛享受美夢。✨",
+            "擁抱生活，按時打卡，今天也要做一個自律的乖寶寶！"
+        ];
+        
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('real-time-clock').innerText = now.toLocaleTimeString('zh-TW');
         }
-    }
-    window.onload = init;
-</script>
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        function changeTheme(bg, card, prim, sec, txt, brd) {
+            const root = document.documentElement;
+            root.style.setProperty('--bg-color', bg);
+            root.style.setProperty('--card-bg', card);
+            root.style.setProperty('--primary', prim);
+            root.style.setProperty('--secondary', sec);
+            root.style.setProperty('--text-main', txt);
+            root.style.setProperty('--border', brd);
+        }
+
+        function handleLogin() {
+            const u = document.getElementById('username').value.trim();
+            const p = document.getElementById('password').value.trim();
+            if(!u || !p) return alert("請輸入用戶名稱與密碼！");
+            document.getElementById('auth-msg').innerText = "安全驗證中...";
+            
+            google.script.run.withSuccessHandler(res => {
+                if(res.success) {
+                    currentUser = res;
+                    if(!res.nickname && res.role !== 'admin') {
+                        document.getElementById('login-overlay').classList.add('hidden');
+                        document.getElementById('nickname-overlay').classList.remove('hidden');
+                    } else {
+                        initApp();
+                    }
+                } else {
+                    document.getElementById('auth-msg').innerText = res.msg;
+                }
+            }).loginUser(u, p);
+        }
+
+        function handleRegister() {
+            const u = document.getElementById('username').value.trim();
+            const p = document.getElementById('password').value.trim();
+            if(!u || !p) return alert("請填寫您想要註冊的帳號與密碼");
+            document.getElementById('auth-msg').innerText = "帳號註冊中...";
+            
+            google.script.run.withSuccessHandler(res => {
+                if(res.success) {
+                    currentUser = { username: u, nickname: '', role: 'user' };
+                    document.getElementById('login-overlay').classList.add('hidden');
+                    document.getElementById('nickname-overlay').classList.remove('hidden');
+                } else {
+                    document.getElementById('auth-msg').innerText = res.msg;
+                }
+            }).registerUser(u, p);
+        }
+
+        function saveNickname() {
+            const nick = document.getElementById('nickname').value.trim();
+            if(!nick) return alert('暱稱不能為空喔！');
+            google.script.run.withSuccessHandler(res => {
+                currentUser.nickname = nick;
+                initApp();
+            }).setNickname(currentUser.username, nick);
+        }
+
+        function logout() {
+            currentUser = {};
+            currentRecords = [];
+            document.getElementById('main-app').classList.add('hidden');
+            document.getElementById('login-overlay').classList.remove('hidden');
+            document.getElementById('username').value = '';
+            document.getElementById('password').value = '';
+            document.getElementById('auth-msg').innerText = '';
+            document.getElementById('btn-punch').disabled = false;
+            document.getElementById('btn-punch').innerText = "立即打卡";
+            document.getElementById('punch-msg').innerText = "";
+        }
+
+        function initApp() {
+            document.getElementById('login-overlay').classList.add('hidden');
+            document.getElementById('nickname-overlay').classList.add('hidden');
+            document.getElementById('main-app').classList.remove('hidden');
+            
+            document.getElementById('user-display').innerText = currentUser.nickname || currentUser.username;
+            document.getElementById('random-quote').innerText = quotes[Math.floor(Math.random() * quotes.length)];
+            
+            if(currentUser.role === 'admin') {
+                document.getElementById('admin-panel').classList.remove('hidden');
+            } else {
+                document.getElementById('admin-panel').classList.add('hidden');
+            }
+
+            const t = new Date();
+            document.getElementById('calendar-title').innerText = `📅 ${t.getFullYear()} 年 ${t.getMonth() + 1} 月`;
+
+            fetchData();
+        }
+
+        function fetchData() {
+            google.script.run.withSuccessHandler(res => {
+                currentRecords = res.records;
+                document.getElementById('count-good').innerText = res.goodCount;
+                document.getElementById('count-bad').innerText = res.badCount;
+                document.getElementById('admin-announcement').innerText = res.announcement || "目前系統沒有新公告。";
+                renderCalendar();
+                renderAdminList();
+            }).getUserData(currentUser.username, currentUser.role);
+        }
+
+        function doPunch() {
+            const mood = document.getElementById('punch-mood').value.trim();
+            document.getElementById('btn-punch').innerText = "處理中...";
+            document.getElementById('btn-punch').disabled = true;
+
+            google.script.run.withSuccessHandler(res => {
+                document.getElementById('btn-punch').innerText = "今日已打卡";
+                document.getElementById('punch-msg').innerText = `🎉 成功！打卡時間: ${res.time} (${res.status})`;
+                document.getElementById('last-punch-time').innerText = `${res.date} ${res.time} \n(${res.status})`;
+                document.getElementById('punch-mood').value = '';
+                fetchData();
+            }).submitPunch(currentUser.username, mood);
+        }
+
+        function renderCalendar() {
+            const cal = document.getElementById('calendar');
+            cal.innerHTML = '';
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = today.getMonth();
+            
+            const firstDayIndex = new Date(year, month, 1).getDay();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const monthStr = `${year}-${String(month + 1).padStart(2, '0')}`;
+
+            for (let x = 0; x < firstDayIndex; x++) {
+                const emptyDiv = document.createElement('div');
+                emptyDiv.style.opacity = "0";
+                cal.appendChild(emptyDiv);
+            }
+
+            for (let i = 1; i <= daysInMonth; i++) {
+                const dayDiv = document.createElement('div');
+                dayDiv.className = 'day';
+                dayDiv.innerText = i;
+                
+                const dateCheck = `${monthStr}-${String(i).padStart(2, '0')}`;
+                
+                const dayRecord = currentRecords.find(r => r.date && r.date.includes(dateCheck) && r.user === currentUser.username && r.status);
+                if (dayRecord) {
+                    const stamp = document.createElement('span');
+                    if (dayRecord.status === '乖寶寶') {
+                        stamp.className = 'stamp good-txt';
+                        stamp.innerText = '好';
+                    } else {
+                        stamp.className = 'stamp bad-txt';
+                        stamp.innerText = '壞';
+                    }
+                    dayDiv.appendChild(stamp);
+                }
+
+                dayDiv.onclick = () => {
+                    const task = prompt(`✍️ 請輸入 [ ${dateCheck} ] 的備忘錄或要做的事情：`);
+                    if(task !== null && task.trim() !== "") {
+                        google.script.run.withSuccessHandler(() => {
+                            alert('備忘錄已儲存！');
+                            fetchData();
+                        }).saveTask(currentUser.username, dateCheck, task.trim());
+                    }
+                };
+                cal.appendChild(dayDiv);
+            }
+        }
+
+        function renderAdminList() {
+            if(currentUser.role !== 'admin') return;
+            const list = document.getElementById('all-records');
+            list.innerHTML = '';
+            
+            currentRecords.slice().reverse().forEach(r => {
+                if(r.status) {
+                    list.innerHTML += `
+                        <div class="record-item">
+                            📅 <code style="color:var(--primary);">${r.date} ${r.time}</code><br>
+                            👤 用戶: <b>${r.user}</b> | 狀態: <span class="${r.status === '乖寶寶'?'good-txt':'bad-txt'}" style="font-weight:bold;">${r.status}</span><br>
+                            💬 心情: <span style="color:#777; font-style:italic;">${r.mood || '無'}</span>
+                        </div>`;
+                }
+            });
+        }
+    </script>
 </body>
 </html>
