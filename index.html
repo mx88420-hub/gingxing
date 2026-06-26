@@ -63,8 +63,8 @@
                 <label style="font-size: 12px; font-weight: bold; color: #888; margin-left: 5px;">密碼</label>
                 <input type="password" id="password" placeholder="請輸入密碼">
             </div>
-            <button onclick="handleLogin()">登入</button>
-            <button class="btn-alt" onclick="handleRegister()">註冊新帳號</button>
+            <button onclick="handleLogin()" id="btn-login">登入</button>
+            <button class="btn-alt" onclick="handleRegister()" id="btn-register">註冊新帳號</button>
             <p id="auth-msg" style="color: var(--secondary); font-size: 14px; font-weight:bold; margin-top:15px; min-height: 20px;"></p>
         </div>
     </div>
@@ -74,7 +74,7 @@
             <h2 style="color: var(--primary); margin-top:0;">🎉 註冊成功！</h2>
             <p style="font-size:14px; color:gray; margin-bottom: 20px;">請設定您在系統中的公開暱稱：</p>
             <input type="text" id="nickname" placeholder="想讓大家怎麼稱呼你？">
-            <button onclick="saveNickname()">完成並進入系統</button>
+            <button onclick="saveNickname()" id="btn-nickname">完成並進入系統</button>
         </div>
     </div>
 
@@ -140,7 +140,7 @@
             
             <div style="margin-top: 20px; background: #fffde7; padding: 15px; border-radius: 12px; border-left: 5px solid #fbc02d; min-height: 120px; box-sizing:border-box;">
                 <strong style="color:#f57f17;">🔊 管理員公告：</strong>
-                <p id="admin-announcement" style="font-size: 14px; margin-top:10px; color:#555; line-height:1.6; white-space: pre-wrap;"></p>
+                <p id="admin-announcement" style="font-size: 14px; margin-top:10px; color:#555; line-height:1.6; white-space: pre-wrap;">載入中...</p>
             </div>
 
             <div id="admin-panel" class="hidden" style="margin-top: 25px; border-top: 3px solid var(--secondary); padding-top: 20px;">
@@ -151,6 +151,9 @@
     </div>
 
     <script>
+        // 你的專屬 GAS 網址
+        const API_URL = "https://script.google.com/macros/s/AKfycbw-ZoFwe2WXmGHywky7pmoKnmy0uci174IoCIwhEADQS8a9ZQaBwAwXEIji05TPfsGXCQ/exec";
+        
         let currentUser = {};
         let currentRecords = [];
         
@@ -162,6 +165,22 @@
             "擁抱生活，按時打卡，今天也要做一個自律的乖寶寶！"
         ];
         
+        // 封裝共用的 API 呼叫函式
+        async function callAPI(action, data = {}) {
+            data.action = action;
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify(data)
+                });
+                return await response.json();
+            } catch (err) {
+                console.error('API 錯誤:', err);
+                return { success: false, msg: '網路連線失敗或後端未正確發布，請確認 GAS 是否已部署為「新版本」' };
+            }
+        }
+
         function updateClock() {
             const now = new Date();
             document.getElementById('real-time-clock').innerText = now.toLocaleTimeString('zh-TW');
@@ -179,51 +198,77 @@
             root.style.setProperty('--border', brd);
         }
 
-        function handleLogin() {
+        async function handleLogin() {
             const u = document.getElementById('username').value.trim();
             const p = document.getElementById('password').value.trim();
             if(!u || !p) return alert("請輸入用戶名稱與密碼！");
-            document.getElementById('auth-msg').innerText = "安全驗證中...";
             
-            google.script.run.withSuccessHandler(res => {
-                if(res.success) {
-                    currentUser = res;
-                    if(!res.nickname && res.role !== 'admin') {
-                        document.getElementById('login-overlay').classList.add('hidden');
-                        document.getElementById('nickname-overlay').classList.remove('hidden');
-                    } else {
-                        initApp();
-                    }
-                } else {
-                    document.getElementById('auth-msg').innerText = res.msg;
-                }
-            }).loginUser(u, p);
-        }
-
-        function handleRegister() {
-            const u = document.getElementById('username').value.trim();
-            const p = document.getElementById('password').value.trim();
-            if(!u || !p) return alert("請填寫您想要註冊的帳號與密碼");
-            document.getElementById('auth-msg').innerText = "帳號註冊中...";
+            const btn = document.getElementById('btn-login');
+            btn.innerText = "驗證中...";
+            btn.disabled = true;
+            document.getElementById('auth-msg').innerText = "正在連接資料庫...";
             
-            google.script.run.withSuccessHandler(res => {
-                if(res.success) {
-                    currentUser = { username: u, nickname: '', role: 'user' };
+            const res = await callAPI('login', { username: u, password: p });
+            
+            btn.innerText = "登入";
+            btn.disabled = false;
+            
+            if(res.success) {
+                currentUser = res;
+                if(!res.nickname && res.role !== 'admin') {
                     document.getElementById('login-overlay').classList.add('hidden');
                     document.getElementById('nickname-overlay').classList.remove('hidden');
                 } else {
-                    document.getElementById('auth-msg').innerText = res.msg;
+                    initApp();
                 }
-            }).registerUser(u, p);
+            } else {
+                document.getElementById('auth-msg').innerText = res.msg;
+            }
         }
 
-        function saveNickname() {
+        async function handleRegister() {
+            const u = document.getElementById('username').value.trim();
+            const p = document.getElementById('password').value.trim();
+            if(!u || !p) return alert("請填寫您想要註冊的帳號與密碼");
+            
+            const btn = document.getElementById('btn-register');
+            btn.innerText = "註冊中...";
+            btn.disabled = true;
+            document.getElementById('auth-msg').innerText = "建立帳號中...";
+            
+            const res = await callAPI('register', { username: u, password: p });
+            
+            btn.innerText = "註冊新帳號";
+            btn.disabled = false;
+
+            if(res.success) {
+                currentUser = { username: u, nickname: '', role: 'user' };
+                document.getElementById('login-overlay').classList.add('hidden');
+                document.getElementById('nickname-overlay').classList.remove('hidden');
+            } else {
+                document.getElementById('auth-msg').innerText = res.msg;
+            }
+        }
+
+        async function saveNickname() {
             const nick = document.getElementById('nickname').value.trim();
             if(!nick) return alert('暱稱不能為空喔！');
-            google.script.run.withSuccessHandler(res => {
+            
+            const btn = document.getElementById('btn-nickname');
+            btn.innerText = "設定中...";
+            btn.disabled = true;
+
+            const res = await callAPI('setNickname', { username: currentUser.username, nickname: nick });
+            
+            btn.innerText = "完成並進入系統";
+            btn.disabled = false;
+
+            if(res.success) {
                 currentUser.nickname = nick;
                 initApp();
-            }).setNickname(currentUser.username, nick);
+            } else {
+                alert("設定失敗，請稍後再試");
+            }
         }
 
         function logout() {
@@ -259,29 +304,37 @@
             fetchData();
         }
 
-        function fetchData() {
-            google.script.run.withSuccessHandler(res => {
+        async function fetchData() {
+            const res = await callAPI('getUserData', { username: currentUser.username, role: currentUser.role });
+            if(res.records) {
                 currentRecords = res.records;
                 document.getElementById('count-good').innerText = res.goodCount;
                 document.getElementById('count-bad').innerText = res.badCount;
                 document.getElementById('admin-announcement').innerText = res.announcement || "目前系統沒有新公告。";
                 renderCalendar();
                 renderAdminList();
-            }).getUserData(currentUser.username, currentUser.role);
+            }
         }
 
-        function doPunch() {
+        async function doPunch() {
             const mood = document.getElementById('punch-mood').value.trim();
-            document.getElementById('btn-punch').innerText = "處理中...";
-            document.getElementById('btn-punch').disabled = true;
+            const btn = document.getElementById('btn-punch');
+            btn.innerText = "打卡連線中...";
+            btn.disabled = true;
 
-            google.script.run.withSuccessHandler(res => {
-                document.getElementById('btn-punch').innerText = "今日已打卡";
+            const res = await callAPI('submitPunch', { username: currentUser.username, mood: mood });
+            
+            if(res.success) {
+                btn.innerText = "今日已打卡";
                 document.getElementById('punch-msg').innerText = `🎉 成功！打卡時間: ${res.time} (${res.status})`;
                 document.getElementById('last-punch-time').innerText = `${res.date} ${res.time} \n(${res.status})`;
                 document.getElementById('punch-mood').value = '';
                 fetchData();
-            }).submitPunch(currentUser.username, mood);
+            } else {
+                btn.innerText = "打卡失敗，重試";
+                btn.disabled = false;
+                alert(res.msg || "打卡時發生錯誤");
+            }
         }
 
         function renderCalendar() {
@@ -321,13 +374,18 @@
                     dayDiv.appendChild(stamp);
                 }
 
-                dayDiv.onclick = () => {
+                dayDiv.onclick = async () => {
                     const task = prompt(`✍️ 請輸入 [ ${dateCheck} ] 的備忘錄或要做的事情：`);
                     if(task !== null && task.trim() !== "") {
-                        google.script.run.withSuccessHandler(() => {
-                            alert('備忘錄已儲存！');
+                        document.getElementById('calendar-title').innerText = "儲存備忘錄中...";
+                        const res = await callAPI('saveTask', { username: currentUser.username, date: dateCheck, task: task.trim() });
+                        document.getElementById('calendar-title').innerText = `📅 ${year} 年 ${month + 1} 月`;
+                        if(res.success) {
+                            alert('備忘錄已成功儲存至雲端資料庫！');
                             fetchData();
-                        }).saveTask(currentUser.username, dateCheck, task.trim());
+                        } else {
+                            alert("儲存失敗，請重試。");
+                        }
                     }
                 };
                 cal.appendChild(dayDiv);
